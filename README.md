@@ -44,8 +44,6 @@ passfox has two parts: the Firefox add-on, and a small native host that runs
 
 1. **Add-on:** install passfox from
    [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/passfox/).
-   (Each [release](https://github.com/AuthenticSm1les/passfox/releases) also
-   carries the Mozilla-signed `.xpi`.)
 2. **Native host:** on Arch Linux, install
    [`passfox-host`](https://aur.archlinux.org/packages/passfox-host) from the
    AUR (it installs the host system-wide). Elsewhere, from a clone of this
@@ -68,12 +66,13 @@ Temporary Add-on → `extension/manifest.json` (removed when Firefox restarts).
 
 ## Releasing
 
-Releases are submitted to addons.mozilla.org and published on GitHub by
-[`.github/workflows/release.yml`](.github/workflows/release.yml) when a tag
-matching the manifest version is pushed. The AMO listing text lives in
-[`amo/metadata.json`](amo/metadata.json) and is sent with every submission.
-If AMO holds a version for human review, the GitHub release goes out without
-the `.xpi`, and AMO publishes it once approved.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs when a
+tag matching the manifest version is pushed. It lints the add-on, publishes a
+GitHub release with the native host tarball, and submits the version to
+addons.mozilla.org with the listing text in
+[`amo/metadata.json`](amo/metadata.json). It doesn't wait for AMO: listed
+versions are reviewed by people, and AMO signs and publishes each one when
+it's approved.
 
 One-time setup: create an API key at
 https://addons.mozilla.org/developers/addon/api/key/ and store it as repository
@@ -91,9 +90,9 @@ and push a matching tag:
 git tag v0.3.1 && git push origin v0.3.1
 ```
 
-The release carries the native host as a tarball and, once signed, the
-`.xpi` plus an `updates.json` that moves copies installed from the old
-self-hosted 0.1.0 release over to AMO updates.
+The AUR package
+([`passfox-host`](https://aur.archlinux.org/packages/passfox-host)) builds
+from the tag, so bump its `pkgver` there too.
 
 ## How the UI copies Firefox
 

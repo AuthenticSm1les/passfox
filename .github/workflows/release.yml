@@ -1,9 +1,13 @@
 name: Release
 
-# Push a tag matching the manifest version (e.g. v0.2.0) to submit the add-on
-# to addons.mozilla.org (listed, with the listing in amo/metadata.json) and
-# publish a GitHub release. Needs the repo secrets AMO_JWT_ISSUER and
+# Push a tag matching the manifest version (e.g. v0.3.1) to publish a GitHub
+# release and submit the add-on to addons.mozilla.org (listed, with the
+# listing in amo/metadata.json). Needs the repo secrets AMO_JWT_ISSUER and
 # AMO_JWT_SECRET (an API key from https://addons.mozilla.org/developers/addon/api/key/).
+#
+# The GitHub release goes out first and the AMO submission doesn't wait for
+# approval: listed versions are reviewed by people, which takes hours or
+# days. AMO signs and publishes the version once it's approved.
 
 on:
   push:
@@ -34,34 +38,6 @@ jobs:
       - name: Lint
         run: npx --yes addons-linter@latest --warnings-as-errors extension
 
-      - name: Submit to addons.mozilla.org
-        env:
-          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-        run: |
-          set +e
-          npx --yes web-ext@8 sign \
-            --source-dir extension \
-            --artifacts-dir dist \
-            --channel listed \
-            --amo-metadata amo/metadata.json \
-            --approval-timeout 1800000 \
-            --api-key "$AMO_JWT_ISSUER" \
-            --api-secret "$AMO_JWT_SECRET" 2>&1 | tee sign.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if ls dist/*.xpi >/dev/null 2>&1; then
-            mv dist/*.xpi "dist/passfox-$VERSION.xpi"
-            echo "SIGNED=true" >> "$GITHUB_ENV"
-          elif grep -qi "approval" sign.log; then
-            # Submitted, but held for a human review; AMO signs and lists it
-            # once approved.
-            echo "::warning::Submitted to AMO; waiting for review, so no signed .xpi in this release"
-            echo "SIGNED=false" >> "$GITHUB_ENV"
-          else
-            exit "${status:-1}"
-          fi
-
       - name: Package native host
         run: |
           mkdir -p "dist/passfox-host-$VERSION/host"
@@ -69,26 +45,24 @@ jobs:
           cp host/passfox_host.py host/io.github.smiley.passfox.json "dist/passfox-host-$VERSION/host/"
           tar -C dist -czf "dist/passfox-host-$VERSION.tar.gz" "passfox-host-$VERSION"
 
-      # Moves copies installed from earlier self-hosted releases onto this
-      # version; it has no update_url, so AMO serves updates from then on.
-      - name: Write updates.json
-        if: env.SIGNED == 'true'
-        run: |
-          python3 -I tools/updates-json.py "$VERSION" \
-            "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/passfox-$VERSION.xpi" \
-            > dist/updates.json
-
-      - name: Publish release
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Install passfox from addons.mozilla.org (https://addons.mozilla.org/firefox/addon/passfox/), then run install.sh from passfox-host-$VERSION.tar.gz (or the repository) to register the native host."
-          files=("dist/passfox-host-$VERSION.tar.gz")
-          if [ "$SIGNED" = "true" ]; then
-            files+=("dist/passfox-$VERSION.xpi" dist/updates.json)
-          else
-            notes="$notes This version is waiting for review on addons.mozilla.org."
-          fi
-          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+          gh release create "$GITHUB_REF_NAME" "dist/passfox-host-$VERSION.tar.gz" \
             --title "passfox $VERSION" \
-            --notes "$notes"
+            --notes "Install passfox from addons.mozilla.org (https://addons.mozilla.org/firefox/addon/passfox/) once this version is approved, then install the native host: \`passfox-host\` from the AUR on Arch Linux, or run install.sh from passfox-host-$VERSION.tar.gz (or the repository)."
+
+      - name: Submit to addons.mozilla.org
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx --yes web-ext@8 sign \
+            --source-dir extension \
+            --artifacts-dir dist \
+            --channel listed \
+            --amo-metadata amo/metadata.json \
+            --approval-timeout 0 \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET"
