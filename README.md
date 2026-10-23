@@ -88,7 +88,7 @@ Then, for each release, bump `version` in `extension/manifest.json`, commit,
 and push a matching tag:
 
 ```sh
-git tag v0.3.0 && git push origin v0.3.0
+git tag v0.3.1 && git push origin v0.3.1
 ```
 
 The release carries the native host as a tarball and, once signed, the
