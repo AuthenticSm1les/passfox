@@ -124,7 +124,11 @@ var PassfoxDoorhanger = (() => {
     function render() {
       const save = mode == "save";
       description.replaceChildren(
-        save ? `Save password for ${pending.host}?` : `Update password for ${pending.host}?`
+        mode == "add-username"
+          ? "Add username to saved password?"
+          : save
+            ? `Save password for ${pending.host}?`
+            : `Update password for ${pending.host}?`
       );
       primary.replaceChildren(save ? "Save" : "Update");
       // Firefox only offers "Never save" for new logins.

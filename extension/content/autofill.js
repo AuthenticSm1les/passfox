@@ -83,6 +83,25 @@
     return isPasswordField(node) || isUsernameField(node);
   }
 
+  // A light stand-in for Firefox's Fathom new-password model: an explicit
+  // autocomplete="new-password", or the new password of a sign-up form
+  // (password, confirm) or a change form (current, new, confirm).
+  function isNewPasswordField(node) {
+    if (!isPasswordField(node)) {
+      return false;
+    }
+    const autocomplete = (node.autocomplete || "").toLowerCase();
+    if (/\bnew-password\b/.test(autocomplete)) {
+      return true;
+    }
+    if (/\bcurrent-password\b/.test(autocomplete)) {
+      return false;
+    }
+    const passwords = visibleInputs(scopeOf(node), isPasswordField);
+    const index = passwords.indexOf(node);
+    return (passwords.length == 2 && index == 0) || (passwords.length == 3 && index == 1);
+  }
+
   /* ::::: logins ::::: */
 
   async function getLogins() {
@@ -236,12 +255,13 @@
 
   async function openPopup(field) {
     await getLogins();
-    if (document.activeElement !== field || !logins.length) {
+    if (document.activeElement !== field) {
       return;
     }
+    const offerGenerated = isNewPasswordField(field) && !field.value;
     const matches = matchesFor(field);
-    const showFooter = !(isPasswordField(field) && field.value);
-    if (!matches.length) {
+    const showFooter = offerGenerated || !(isPasswordField(field) && field.value);
+    if (!matches.length && !offerGenerated) {
       closePopup();
       return;
     }
@@ -256,6 +276,16 @@
         onActivate: () => fillFrom(login, field),
       })
     );
+    if (offerGenerated) {
+      rows.push(
+        buildRow({
+          label: "Use a Securely Generated Password",
+          description: "passfox will save this password for this website.",
+          iconNode: icon("login", "icon"),
+          onActivate: () => fillGenerated(field),
+        })
+      );
+    }
     if (showFooter) {
       rows.push(
         buildRow({
@@ -356,6 +386,23 @@
   async function fillFrom(entry, field) {
     try {
       fillLogin(await call("fill", { path: entry.path }), field);
+    } catch (error) {
+      console.warn("passfox:", error.message);
+    }
+  }
+
+  // pass generates and stores the password; fill it and its confirmation.
+  async function fillGenerated(field) {
+    try {
+      const login = await call("generate");
+      setValue(field, login.password);
+      const confirm = visibleInputs(scopeOf(field), isPasswordField).find(
+        p => p !== field && precedes(field, p) && !p.value
+      );
+      setValue(confirm, login.password);
+      lastFill = { path: login.path, password: login.password };
+      logins = null;
+      loginsPromise = null;
     } catch (error) {
       console.warn("passfox:", error.message);
     }

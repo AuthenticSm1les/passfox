@@ -76,6 +76,23 @@ def main():
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
         assert got == {"password": "two", "username": "alice", "url": "https://github.com"}, got
         assert "error" in ask(env, {"action": "insert", "path": "www/x/y", "username": "a", "password": "a\nb"})
+
+        # Generate like Firefox (15 characters), then adopt into a new login...
+        gen = ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
+        assert len(gen["password"]) == 15 and gen["entry"]["username"] == "", gen
+        assert "error" in ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
+        assert "error" in ask(env, {"action": "generate", "path": "www/new.test/erin"})
+        assert ask(env, {"action": "adopt", "from": "www/new.test/passfox-generated-1", "to": "www/new.test/erin", "username": "erin"})["ok"]
+        assert ask(env, {"action": "get", "path": "www/new.test/erin"})["password"] == gen["password"]
+        assert "error" in ask(env, {"action": "get", "path": "www/new.test/passfox-generated-1"})
+        # ...and into an existing one, keeping its other lines.
+        gen = ask(env, {"action": "generate", "path": "www/github.com/passfox-generated-2"})
+        assert ask(env, {"action": "adopt", "from": "www/github.com/passfox-generated-2", "to": "www/github.com/alice", "username": "alice"})["ok"]
+        got = ask(env, {"action": "get", "path": "www/github.com/alice"})
+        assert got == {"password": gen["password"], "username": "alice", "url": "https://github.com"}, got
+        assert "error" in ask(env, {"action": "get", "path": "www/github.com/passfox-generated-2"})
+        # Only generated entries can be adopted (i.e. renamed or removed).
+        assert "error" in ask(env, {"action": "adopt", "from": "www/github.com/work", "to": "www/github.com/x", "username": "x"})
         assert "error" in ask(env, {"action": "bogus"})
 
         subprocess.run(["gpgconf", "--kill", "gpg-agent"], env=env, capture_output=True)

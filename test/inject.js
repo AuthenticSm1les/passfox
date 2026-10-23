@@ -28,9 +28,11 @@
           }
           case "logins": return { result: logins };
           case "fill": return { result: { path: msg.path, username: msg.path.split("/").at(-1), password: "correct horse" } };
+          case "generate":
+            return { result: { path: "www/localhost/passfox-generated-20261023-120000", username: "", password: "Kq7#xR2!mVb9-Lp" } };
           case "submitted":
             setTimeout(() => listeners.forEach(fn => fn({ type: "show-save", pending: {
-              mode: "save", host: location.hostname, username: msg.username, password: msg.password,
+              mode: msg.filledPath?.includes("passfox-generated-") && msg.password === msg.filledPassword ? "add-username" : "save", host: location.hostname, username: msg.username, password: msg.password,
               usernameSuggestions: [...new Set([...msg.possibleUsernames, ...logins.map(l => l.username)].filter(Boolean))] } })), 0);
             return { result: null };
           case "pending": return { result: null };

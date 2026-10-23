@@ -19,6 +19,10 @@ URL_KEYS = ("url", "website", "site")
 # Top-level folders that hold secrets other than site logins (TOTP seeds,
 # FIDO2 keys); they are listed but never offered for a website.
 NON_LOGIN_DIRS = set(filter(None, os.environ.get("PASSFOX_NON_LOGIN_DIRS", "otp:fido2").split(":")))
+# Entries made by "Use a Securely Generated Password" before a username is
+# known; they count as having no username until adopted.
+GENERATED_PREFIX = "passfox-generated-"
+GENERATED_LENGTH = "15"  # Firefox's DEFAULT_PASSWORD_LENGTH
 
 
 def read_message():
@@ -63,6 +67,8 @@ def describe(path):
             rest = parts[i + 1:]
             username = "/".join(rest)
             break
+    if parts[-1].startswith(GENERATED_PREFIX):
+        username = ""
     return {"path": path, "domain": domain, "username": username}
 
 
@@ -135,7 +141,40 @@ def cmd_insert(msg):
     return {"ok": True, "entry": describe(path)}
 
 
-COMMANDS = {"list": cmd_list, "get": cmd_get, "insert": cmd_insert}
+def cmd_generate(msg):
+    path = check_path(msg.get("path"), must_exist=False)
+    if not path.split("/")[-1].startswith(GENERATED_PREFIX):
+        raise ValueError("generated entries must be named " + GENERATED_PREFIX + "*")
+    if os.path.exists(os.path.join(STORE, path + ".gpg")):
+        raise ValueError("entry already exists")
+    run_pass(["generate", "--", path, GENERATED_LENGTH])
+    return {"entry": describe(path), **cmd_get({"path": path})}
+
+
+def cmd_adopt(msg):
+    """Give a generated entry its username: rename it, or, when that login
+    already exists, move the new password into it (keeping its other lines)
+    and drop the generated entry."""
+    source = check_path(msg.get("from"))
+    if not source.split("/")[-1].startswith(GENERATED_PREFIX):
+        raise ValueError("only generated entries can be adopted")
+    target = check_path(msg.get("to"), must_exist=False)
+    password = parse_entry(run_pass(["show", "--", source]))["password"]
+    if os.path.isfile(os.path.join(STORE, target + ".gpg")):
+        cmd_insert({"path": target, "password": password, "username": msg.get("username")})
+        run_pass(["rm", "--force", "--", source])
+    else:
+        run_pass(["mv", "--", source, target])
+    return {"ok": True, "entry": describe(target)}
+
+
+COMMANDS = {
+    "list": cmd_list,
+    "get": cmd_get,
+    "insert": cmd_insert,
+    "generate": cmd_generate,
+    "adopt": cmd_adopt,
+}
 
 
 def main():

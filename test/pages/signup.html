@@ -15,9 +15,9 @@
 <h2>What to check</h2>
 <ul>
 <li>"Full name" and "One-time code" never get the dropdown.</li>
-<li>Note: the password field still offers saved logins. Firefox would offer
-"Use a Securely Generated Password" here instead, which passfox doesn't do yet.</li>
-<li>Submitting offers to save the new account.</li>
+<li>The password field offers "Use a Securely Generated Password" below any saved logins.
+Picking it runs <code>pass generate</code> (a new <code>www/localhost/passfox-generated-…</code> entry) and fills the field.</li>
+<li>Submitting then offers "Add username to saved password?"; Update renames the entry to <code>www/localhost/&lt;email&gt;</code>.</li>
 </ul>
 </div>
 </body>

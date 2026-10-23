@@ -121,6 +121,12 @@ function clearPending(tabId) {
 
 browser.tabs.onRemoved.addListener(clearPending);
 
+const GENERATED_PREFIX = "passfox-generated-";
+
+function isGeneratedPath(path) {
+  return path?.split("/").at(-1).startsWith(GENERATED_PREFIX);
+}
+
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
   return `www/${host}/${name}`;
@@ -139,11 +145,27 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
   if ((await neverSaveHosts()).includes(host)) {
     return;
   }
+  const logins = await loginsForUrl(sender.url);
   if (filledPath && password === filledPassword) {
+    // A generated password saved without a username: offer to add the one
+    // the form was submitted with, like Firefox's "Add username to saved
+    // password?" (or fold it into that login if it already exists).
+    if (isGeneratedPath(filledPath) && username) {
+      const existing = logins.find(e => e.username === username && !isGeneratedPath(e.path));
+      await presentPending(sender.tab, {
+        mode: existing ? "update" : "add-username",
+        from: filledPath,
+        path: existing?.path ?? savePathFor(host, username),
+        username,
+        host,
+        password,
+        usernameSuggestions: [],
+        at: Date.now(),
+      });
+    }
     return;
   }
 
-  const logins = await loginsForUrl(sender.url);
   const sameUser = logins.find(e => e.exact && e.username === (username || ""))
     ?? logins.find(e => e.username === (username || "") && username);
   let pending;
@@ -194,6 +216,10 @@ async function onPendingDone(sender, { action, username, password, tabId: pageTa
   if (action == "never") {
     const hosts = await neverSaveHosts();
     await browser.storage.local.set({ neverSave: [...new Set([...hosts, pending.host])] });
+  } else if (pending.from && (action == "update" || action == "add-username" || action == "save")) {
+    const path = username === pending.username ? pending.path : savePathFor(pending.host, username);
+    await native({ action: "adopt", from: pending.from, to: path, username });
+    listCache = null;
   } else if (action == "save" || action == "update") {
     const path =
       action == "update" && pending.path ? pending.path : savePathFor(pending.host, username);
@@ -261,6 +287,18 @@ const handlers = {
   },
 
   submitted: (msg, sender) => onSubmitted(sender, msg),
+
+  // "Use a Securely Generated Password": pass generates and stores it.
+  async generate(msg, sender) {
+    const host = hostOf(sender.url);
+    if (!host) {
+      throw new Error("Not a website");
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+    const result = await native({ action: "generate", path: `www/${host}/${GENERATED_PREFIX}${stamp}` });
+    listCache = null;
+    return { path: result.entry.path, username: "", password: result.password };
+  },
 
   // Content scripts ask for their own tab, the toolbar popup for the active one.
   async pending(msg, sender) {
