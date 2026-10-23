@@ -17,6 +17,7 @@
 <li>"Full name" and "One-time code" never get the dropdown.</li>
 <li>The password field offers "Use a Securely Generated Password" below any saved logins.
 Picking it runs <code>pass generate</code> (a new <code>www/localhost/passfox-generated-…</code> entry) and fills the field.</li>
+<li>While the field has focus the generated password shows in clear text; it's masked on blur, and for good once you clear it.</li>
 <li>Submitting then offers "Add username to saved password?"; Update renames the entry to <code>www/localhost/&lt;email&gt;</code>.</li>
 </ul>
 </div>

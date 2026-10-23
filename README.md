@@ -18,7 +18,10 @@ the look and behaviour of Firefox's built-in password manager.
 - **Generated passwords** on sign-up and change-password forms: "Use a
   Securely Generated Password" runs `pass generate` (with your pass length
   and character settings) into `www/<host>/passfox-generated-<time>` and fills the password
-  and confirmation fields. After you submit, "Add username to saved
+  and confirmation fields. Like Firefox, a filled generated password shows in
+  clear text while its field has focus (until you clear or replace it); the
+  field is masked again before the form is submitted, and form history never
+  sees it. After you submit, "Add username to saved
   password?" renames it to `www/<host>/<username>` (or, if that login exists,
   moves the new password into it). passfox only ever renames or removes
   `passfox-generated-*` entries.

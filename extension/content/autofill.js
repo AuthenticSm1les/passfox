@@ -25,11 +25,73 @@
   }
 
   function isPasswordField(node) {
-    return isInput(node) && node.type == "password";
+    return isInput(node) && (node.type == "password" || unmasked.has(node));
   }
 
   function isTextField(node) {
-    return isInput(node) && TEXT_TYPES.has(node.type);
+    return isInput(node) && TEXT_TYPES.has(node.type) && !unmasked.has(node);
+  }
+
+  /* ::::: generated-password unmasking ::::: */
+
+  // Firefox shows a filled generated password in clear text while its field
+  // has focus (editor.unmask(), chrome-only). A page can only do that by
+  // switching the input to type=text, so autocomplete is turned off
+  // meanwhile (form history never records it) and fields are masked again
+  // before any submit.
+  const generatedFields = new WeakMap(); // field -> its current value
+  const unmasked = new Map(); // field -> its own autocomplete attribute
+
+  function unmask(field) {
+    if (unmasked.has(field) || field.type != "password") {
+      return;
+    }
+    unmasked.set(field, field.getAttribute("autocomplete"));
+    field.setAttribute("autocomplete", "off");
+    field.type = "text";
+  }
+
+  function mask(field) {
+    if (!unmasked.has(field)) {
+      return;
+    }
+    const autocomplete = unmasked.get(field);
+    unmasked.delete(field);
+    if (field.type == "text") {
+      field.type = "password";
+    }
+    if (autocomplete == null) {
+      field.removeAttribute("autocomplete");
+    } else {
+      field.setAttribute("autocomplete", autocomplete);
+    }
+  }
+
+  function maskAll() {
+    [...unmasked.keys()].forEach(mask);
+  }
+
+  function treatAsGenerated(field) {
+    if (!field) {
+      return;
+    }
+    generatedFields.set(field, field.value);
+    if (document.activeElement === field) {
+      unmask(field);
+    }
+  }
+
+  // Like _doesEventClearPrevFieldValue: an edit that replaces the whole
+  // value (rather than adding to or trimming it) ends the special handling.
+  function replacedValue(previous, value) {
+    if (!value) {
+      return true;
+    }
+    let prefix = 0;
+    while (prefix < previous.length && previous[prefix] === value[prefix]) {
+      prefix++;
+    }
+    return prefix == 0 && !value.endsWith(previous.at(-1) ?? "");
   }
 
   function scopeOf(node) {
@@ -400,6 +462,8 @@
         p => p !== field && precedes(field, p) && !p.value
       );
       setValue(confirm, login.password);
+      treatAsGenerated(field);
+      treatAsGenerated(confirm);
       lastFill = { path: login.path, password: login.password };
       logins = null;
       loginsPromise = null;
@@ -431,6 +495,10 @@
     "focusin",
     e => {
       const field = e.composedPath()[0];
+      if (generatedFields.has(field)) {
+        unmask(field);
+        return;
+      }
       if (isLoginField(field) && popupDismissedFor !== field) {
         openPopup(field);
       }
@@ -441,7 +509,9 @@
   document.addEventListener(
     "focusout",
     e => {
-      if (popup && e.composedPath()[0] === popup.field) {
+      const field = e.composedPath()[0];
+      mask(field);
+      if (popup && field === popup.field) {
         closePopup();
       }
       popupDismissedFor = null;
@@ -473,6 +543,14 @@
       const field = e.composedPath()[0];
       if (!e.isTrusted || document.activeElement !== field) {
         return;
+      }
+      if (generatedFields.has(field)) {
+        if (replacedValue(generatedFields.get(field), field.value)) {
+          generatedFields.delete(field);
+          mask(field);
+        } else {
+          generatedFields.set(field, field.value);
+        }
       }
       // Typing a password hides the popup; typing a username filters it.
       if (isPasswordField(field)) {
@@ -575,6 +653,7 @@
   }
 
   function captureSubmit(scope) {
+    maskAll();
     const credentials = credentialsIn(scope);
     if (!credentials) {
       return;
