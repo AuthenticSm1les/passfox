@@ -1,8 +1,9 @@
 name: Release
 
-# Push a tag matching the manifest version (e.g. v0.1.0) to build, sign and
-# publish the add-on. Needs the repo secrets AMO_JWT_ISSUER and AMO_JWT_SECRET
-# (an API key from https://addons.mozilla.org/developers/addon/api/key/).
+# Push a tag matching the manifest version (e.g. v0.2.0) to submit the add-on
+# to addons.mozilla.org (listed, with the listing in amo/metadata.json) and
+# publish a GitHub release. Needs the repo secrets AMO_JWT_ISSUER and
+# AMO_JWT_SECRET (an API key from https://addons.mozilla.org/developers/addon/api/key/).
 
 on:
   push:
@@ -31,20 +32,35 @@ jobs:
           node-version: 22
 
       - name: Lint
-        run: npx --yes web-ext@8 lint --source-dir extension --self-hosted
+        run: npx --yes web-ext@8 lint --source-dir extension
 
-      - name: Sign (unlisted, self-distributed)
+      - name: Submit to addons.mozilla.org
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
+          set +e
           npx --yes web-ext@8 sign \
             --source-dir extension \
             --artifacts-dir dist \
-            --channel unlisted \
+            --channel listed \
+            --amo-metadata amo/metadata.json \
+            --approval-timeout 1800000 \
             --api-key "$AMO_JWT_ISSUER" \
-            --api-secret "$AMO_JWT_SECRET"
-          mv dist/*.xpi "dist/passfox-$VERSION.xpi"
+            --api-secret "$AMO_JWT_SECRET" 2>&1 | tee sign.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if ls dist/*.xpi >/dev/null 2>&1; then
+            mv dist/*.xpi "dist/passfox-$VERSION.xpi"
+            echo "SIGNED=true" >> "$GITHUB_ENV"
+          elif grep -qi "approval" sign.log; then
+            # Submitted, but held for a human review; AMO signs and lists it
+            # once approved.
+            echo "::warning::Submitted to AMO; waiting for review, so no signed .xpi in this release"
+            echo "SIGNED=false" >> "$GITHUB_ENV"
+          else
+            exit "${status:-1}"
+          fi
 
       - name: Package native host
         run: |
@@ -53,7 +69,10 @@ jobs:
           cp host/passfox_host.py host/io.github.smiley.passfox.json "dist/passfox-host-$VERSION/host/"
           tar -C dist -czf "dist/passfox-host-$VERSION.tar.gz" "passfox-host-$VERSION"
 
+      # Moves copies installed from earlier self-hosted releases onto this
+      # version; it has no update_url, so AMO serves updates from then on.
       - name: Write updates.json
+        if: env.SIGNED == 'true'
         run: |
           python3 -I tools/updates-json.py "$VERSION" \
             "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/passfox-$VERSION.xpi" \
@@ -63,9 +82,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "dist/passfox-$VERSION.xpi" \
-            "dist/passfox-host-$VERSION.tar.gz" \
-            dist/updates.json \
+          notes="Install passfox from addons.mozilla.org (https://addons.mozilla.org/firefox/addon/passfox/), then run install.sh from passfox-host-$VERSION.tar.gz (or the repository) to register the native host."
+          files=("dist/passfox-host-$VERSION.tar.gz")
+          if [ "$SIGNED" = "true" ]; then
+            files+=("dist/passfox-$VERSION.xpi" dist/updates.json)
+          else
+            notes="$notes This version is waiting for review on addons.mozilla.org."
+          fi
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
             --title "passfox $VERSION" \
-            --notes "Install: open passfox-$VERSION.xpi in Firefox, then run install.sh from passfox-host-$VERSION.tar.gz (or the repository) to register the native host."
+            --notes "$notes"

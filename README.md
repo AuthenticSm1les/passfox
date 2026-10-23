@@ -35,10 +35,10 @@ Top-level `otp/` and `fido2/` are never offered for sites (change this with
 passfox has two parts: the Firefox add-on, and a small native host that runs
 `pass` for it. You need `pass`, `gpg` and Python 3.
 
-1. **Add-on:** open the latest `passfox-<version>.xpi` from
-   [Releases](https://github.com/AuthenticSm1les/passfox/releases/latest) in
-   Firefox and click *Add*. It's signed by Mozilla, so it installs like any
-   other add-on and updates itself from this repository's releases.
+1. **Add-on:** install passfox from
+   [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/passfox/).
+   (Each [release](https://github.com/AuthenticSm1les/passfox/releases) also
+   carries the Mozilla-signed `.xpi`.)
 2. **Native host:** from a clone of this repository (or the
    `passfox-host-<version>.tar.gz` release file), run:
 
@@ -59,10 +59,12 @@ Temporary Add-on → `extension/manifest.json` (removed when Firefox restarts).
 
 ## Releasing
 
-Releases are built, signed and published by
+Releases are submitted to addons.mozilla.org and published on GitHub by
 [`.github/workflows/release.yml`](.github/workflows/release.yml) when a tag
-matching the manifest version is pushed. Signing uses Mozilla's free unlisted
-(self-distributed) channel, so nothing is listed on addons.mozilla.org.
+matching the manifest version is pushed. The AMO listing text lives in
+[`amo/metadata.json`](amo/metadata.json) and is sent with every submission.
+If AMO holds a version for human review, the GitHub release goes out without
+the `.xpi`, and AMO publishes it once approved.
 
 One-time setup: create an API key at
 https://addons.mozilla.org/developers/addon/api/key/ and store it as repository
@@ -77,11 +79,12 @@ Then, for each release, bump `version` in `extension/manifest.json`, commit,
 and push a matching tag:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
-The release carries the signed `.xpi`, the native host as a tarball, and the
-`updates.json` that installed copies poll (the manifest's `update_url`).
+The release carries the native host as a tarball and, once signed, the
+`.xpi` plus an `updates.json` that moves copies installed from the old
+self-hosted 0.1.0 release over to AMO updates.
 
 ## How the UI copies Firefox
 

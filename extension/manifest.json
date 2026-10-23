@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "passfox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fill and save Firefox logins from pass, the standard unix password manager, using Firefox's own password manager look.",
   "browser_specific_settings": {
     "gecko": {
       "id": "passfox@smiley",
       "strict_min_version": "128.0",
-      "update_url": "https://github.com/AuthenticSm1les/passfox/releases/latest/download/updates.json",
       "data_collection_permissions": {
         "required": [
           "none"

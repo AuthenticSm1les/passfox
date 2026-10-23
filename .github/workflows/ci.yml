@@ -18,4 +18,4 @@ jobs:
         with:
           node-version: 22
       - name: Lint extension
-        run: npx --yes web-ext@8 lint --source-dir extension --self-hosted
+        run: npx --yes web-ext@8 lint --source-dir extension
