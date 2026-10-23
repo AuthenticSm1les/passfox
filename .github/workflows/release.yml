@@ -32,7 +32,7 @@ jobs:
           node-version: 22
 
       - name: Lint
-        run: npx --yes web-ext@8 lint --source-dir extension
+        run: npx --yes addons-linter@latest --warnings-as-errors extension
 
       - name: Submit to addons.mozilla.org
         env:

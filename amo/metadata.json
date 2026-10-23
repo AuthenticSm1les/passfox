@@ -1,6 +1,8 @@
 {
   "categories": {
-    "firefox": ["privacy-security"]
+    "firefox": [
+      "privacy-security"
+    ]
   },
   "summary": {
     "en-US": "Fill and save website logins from pass, the standard unix password manager, with a popup and save prompt styled like Firefox's built-in password manager."
@@ -17,6 +19,9 @@
   "is_experimental": false,
   "requires_payment": false,
   "version": {
-    "license": "MPL-2.0"
+    "license": "MPL-2.0",
+    "compatibility": [
+      "firefox"
+    ]
   }
 }
