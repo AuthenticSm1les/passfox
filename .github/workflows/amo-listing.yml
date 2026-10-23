@@ -1,7 +1,9 @@
 name: AMO listing
 
 # Keeps the addons.mozilla.org listing (text, tags, icon, screenshots) in
-# sync with amo/, without submitting a new version.
+# sync with amo/, without submitting a new version. A push only updates the
+# parts that changed, because AMO rate-limits listing edits; running it by
+# hand updates everything.
 
 on:
   push:
@@ -14,8 +16,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Work out what changed
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          parts=""
+          if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+            changed=$(git diff --name-only "$BEFORE" HEAD)
+            grep -q '^amo/metadata.json$' <<<"$changed" && parts="$parts text"
+            grep -q '^amo/icon-128.png$' <<<"$changed" && parts="$parts icon"
+            grep -q '^amo/screenshots/' <<<"$changed" && parts="$parts screenshots"
+            # A change to the script alone doesn't need any listing edits.
+            [ -n "$parts" ] || parts="none"
+          fi
+          echo "PARTS=$parts" >> "$GITHUB_ENV"
+          echo "Updating: ${parts:-text icon screenshots}"
+
       - name: Update listing
+        if: env.PARTS != 'none'
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
-        run: python3 -I tools/amo-listing.py
+        run: python3 -I -u tools/amo-listing.py $PARTS

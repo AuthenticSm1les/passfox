@@ -3,7 +3,9 @@
 (metadata.json), the icon (icon-128.png) and the screenshots
 (screenshots/captions.json, in that order).
 
-Usage: AMO_JWT_ISSUER=... AMO_JWT_SECRET=... tools/amo-listing.py [--dry-run]
+Usage: AMO_JWT_ISSUER=... AMO_JWT_SECRET=... tools/amo-listing.py [--dry-run] [PART...]
+
+PART is text, icon or screenshots (default: all three).
 """
 
 import base64
@@ -22,6 +24,9 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 API = "https://addons.mozilla.org/api/v5/addons/addon/"
 DRY_RUN = "--dry-run" in sys.argv
+PARTS = [a for a in sys.argv[1:] if not a.startswith("--")] or ["text", "icon", "screenshots"]
+# Waits AMO asks for beyond this mean an hourly limit: stop rather than sleep.
+MAX_WAIT = 180
 
 
 def b64url(data):
@@ -80,9 +85,11 @@ def request(method, url, json_body=None, fields=None, files=None):
             if error.code != 429:
                 sys.exit(f"{method} {url} failed: {error.code} {detail[:500]}")
             # AMO throttles listing edits; wait as long as it asks.
-            wait = error.headers.get("Retry-After") or (re.findall(r"(\d+) seconds", detail) or ["60"])[0]
-            print(f"  throttled, waiting {int(wait) + 2}s")
-            time.sleep(int(wait) + 2)
+            wait = int(error.headers.get("Retry-After") or (re.findall(r"(\d+) seconds", detail) or ["60"])[0])
+            if wait > MAX_WAIT:
+                sys.exit(f"AMO is rate-limiting listing edits; run this again in {wait // 60 + 1} minutes.")
+            print(f"  throttled, waiting {wait + 2}s")
+            time.sleep(wait + 2)
     sys.exit(f"{method} {url} still throttled after retries")
 
 
@@ -90,13 +97,21 @@ def main():
     manifest = json.loads((ROOT / "extension" / "manifest.json").read_text())
     addon = API + manifest["browser_specific_settings"]["gecko"]["id"] + "/"
 
-    metadata = json.loads((ROOT / "amo" / "metadata.json").read_text())
-    metadata.pop("version", None)  # per-version fields go with each submission
-    request("PATCH", addon, json_body=metadata)
+    if "text" in PARTS:
+        metadata = json.loads((ROOT / "amo" / "metadata.json").read_text())
+        metadata.pop("version", None)  # per-version fields go with each submission
+        request("PATCH", addon, json_body=metadata)
 
-    request("PATCH", addon, files={"icon": ROOT / "amo" / "icon-128.png"})
+    if "icon" in PARTS:
+        request("PATCH", addon, files={"icon": ROOT / "amo" / "icon-128.png"})
 
-    # Replace the screenshots so AMO matches amo/screenshots exactly.
+    if "screenshots" in PARTS:
+        sync_screenshots(addon)
+    print("listing updated:", ", ".join(PARTS))
+
+
+def sync_screenshots(addon):
+    """Replace the screenshots so AMO matches amo/screenshots exactly."""
     current = request("GET", addon).get("previews", [])
     for preview in current:
         request("DELETE", f"{addon}previews/{preview['id']}/")
@@ -110,7 +125,6 @@ def main():
         )
         if not DRY_RUN:
             request("PATCH", f"{addon}previews/{created['id']}/", json_body={"caption": {"en-US": shot["caption"]}})
-    print("listing updated")
 
 
 if __name__ == "__main__":
