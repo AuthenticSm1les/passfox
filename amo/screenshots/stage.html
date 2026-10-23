@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- Scene for AMO/README screenshots: a neutral sign-in page on the
+     fictional example.com, running passfox's real content scripts against a
+     fake extension API with made-up logins. Serve the project root with
+     test/serve.py and open /amo/screenshots/stage.html?scene=login|signup|save|doorhanger.
+     The scenes play themselves on load, so headless Firefox can capture them:
+       firefox --headless --no-remote --profile "$(mktemp -d)" --window-size 1280,800 \
+         --screenshot login.png "http://localhost:8765/amo/screenshots/stage.html?scene=login" -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Example — Sign in</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, sans-serif; }
+      body { margin: 0; background: #f4f5f7; color: #1d1f23; }
+      header { background: #fff; border-bottom: 1px solid #e3e5e8; padding: 14px 40px; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+      header span { color: #5b6ee1; }
+      main { display: grid; place-items: start center; padding-top: 70px; }
+      .card { width: 380px; background: #fff; border: 1px solid #e3e5e8; border-radius: 12px; padding: 28px 32px 32px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      p.sub { margin: 0 0 22px; color: #6b7079; font-size: 14px; }
+      form { display: grid; gap: 14px; }
+      label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+      input { font: inherit; font-weight: 400; padding: 10px 12px; border: 1px solid #cfd3d9; border-radius: 8px; background: #fff; }
+      input:focus { outline: 2px solid #5b6ee1; outline-offset: -1px; border-color: transparent; }
+      button { margin-top: 6px; font: inherit; font-weight: 600; padding: 10px; border: 0; border-radius: 8px; background: #5b6ee1; color: #fff; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>exam<span>ple</span></header>
+    <main>
+      <div class="card" id="login">
+        <h1>Sign in</h1>
+        <p class="sub">Welcome back to Example.</p>
+        <form onsubmit="event.preventDefault()">
+          <label>Email <input name="email" type="email" autocomplete="username" /></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" /></label>
+          <button>Sign in</button>
+        </form>
+      </div>
+      <div class="card" id="signup" hidden>
+        <h1>Create your account</h1>
+        <p class="sub">It takes less than a minute.</p>
+        <form onsubmit="event.preventDefault()">
+          <label>Email <input name="email" type="email" autocomplete="email" value="sam@example.com" /></label>
+          <label>Password <input name="password" type="password" autocomplete="new-password" /></label>
+          <label>Confirm password <input name="confirm" type="password" autocomplete="new-password" /></label>
+          <button>Create account</button>
+        </form>
+      </div>
+    </main>
+    <script>
+      const scene = new URL(location.href).searchParams.get("scene") ?? "login";
+      document.getElementById("login").hidden = scene == "signup";
+      document.getElementById("signup").hidden = scene != "signup";
+
+      const attachShadow = Element.prototype.attachShadow;
+      Element.prototype.attachShadow = function (options) {
+        return (window.passfoxShadow = attachShadow.call(this, { ...options, mode: "open" }));
+      };
+      const listeners = [];
+      const logins = [
+        { path: "www/example.com/alex@example.com", domain: "example.com", username: "alex@example.com", exact: true, modified: 1790000000000 },
+        { path: "www/example.com/alex.work@example.com", domain: "example.com", username: "alex.work@example.com", exact: true, modified: 1785000000000 },
+        { path: "www/accounts.example.com/alex", domain: "accounts.example.com", username: "alex", exact: false, modified: 1770000000000 },
+      ];
+      window.browser = {
+        runtime: {
+          onMessage: { addListener: fn => listeners.push(fn) },
+          async sendMessage(msg) {
+            switch (msg.type) {
+              case "css": {
+                const files = ["vendor/firefox/tokens-shared.css", "vendor/firefox/tokens-platform.css", "shared/firefox.css"];
+                const texts = await Promise.all(files.map(f => fetch(`/extension/${f}`, { cache: "no-store" }).then(r => r.text())));
+                return { result: texts.join("\n") };
+              }
+              case "logins": return { result: logins };
+              case "fill": return { result: { path: msg.path, username: msg.path.split("/").at(-1), password: "correct-horse-battery" } };
+              case "generate": return { result: { path: "www/example.com/passfox-generated-20261023-120000", username: "", password: "n7#Rk2!vQe9@Lm4$Tw8^zPa" } };
+              case "submitted":
+                setTimeout(() => listeners.forEach(fn => fn({ type: "show-save", pending: {
+                  mode: "save", host: "example.com", username: msg.username, password: msg.password,
+                  usernameSuggestions: [msg.username, "alex@example.com", "alex.work@example.com"] } })), 0);
+                return { result: null };
+              case "pending": return { result: null };
+              default: return { result: { ok: true } };
+            }
+          },
+        },
+      };
+    </script>
+    <script src="/extension/shared/icons.js"></script>
+    <script src="/extension/content/ui.js"></script>
+    <script src="/extension/shared/doorhanger.js"></script>
+    <script src="/extension/content/autofill.js"></script>
+    <script src="/extension/content/save-prompt.js"></script>
+    <script>
+      // Play the scene on load, for headless `firefox --screenshot`.
+      const key = (field, k) => field.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      (async () => {
+        await wait(300);
+        if (scene == "login") {
+          const email = document.querySelector("#login [name=email]");
+          email.focus();
+          // A headless window has no focus, so focusing doesn't open the
+          // popup there; the first arrow key does, the second selects.
+          key(email, "ArrowDown");
+          await wait(1200);
+          key(email, "ArrowDown");
+        } else if (scene == "save" || scene == "doorhanger") {
+          document.querySelector("#login [name=email]").value = "sam@example.com";
+          document.querySelector("#login [name=password]").value = "a-new-password";
+          document.querySelector("#login button").click();
+          if (scene == "doorhanger") {
+            // Just the doorhanger, away from the edges, for compositing.
+            document.querySelector("header").hidden = true;
+            document.querySelector("main").hidden = true;
+            await wait(600);
+            const panel = passfoxShadow.querySelector(".doorhanger");
+            panel.style.top = "24px";
+            panel.style.insetInlineStart = "24px";
+          }
+        } else if (scene == "signup") {
+          const password = document.querySelector("#signup [name=password]");
+          password.focus();
+          key(password, "ArrowDown");
+          await wait(1200);
+          key(password, "ArrowUp");
+          key(password, "ArrowUp");
+        }
+      })();
+    </script>
+    <!-- Holds the load event (and the screenshot) until the scene is set. -->
+    <img src="/delay?ms=3500" alt="" hidden />
+  </body>
+</html>

@@ -1,7 +1,14 @@
 # passfox
 
+[![CI](https://github.com/AuthenticSm1les/passfox/actions/workflows/ci.yml/badge.svg)](https://github.com/AuthenticSm1les/passfox/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/AuthenticSm1les/passfox)](https://github.com/AuthenticSm1les/passfox/releases/latest)
+[![AUR](https://img.shields.io/aur/version/passfox-host?label=AUR%20passfox-host)](https://aur.archlinux.org/packages/passfox-host)
+[![License: MPL-2.0](https://img.shields.io/github/license/AuthenticSm1les/passfox)](LICENSE)
+
 Fill and save Firefox logins from [pass](https://www.passwordstore.org/), with
 the look and behaviour of Firefox's built-in password manager.
+
+![The passfox login dropdown on a sign-in form](amo/screenshots/1-fill-dropdown.png)
 
 - **Autocomplete popup** on login fields: a copy of `#PopupAutoComplete`
   (username, "From this website", a hover edit button, the "Manage Passwords"
@@ -28,6 +35,16 @@ the look and behaviour of Firefox's built-in password manager.
 - **Toolbar panel** listing this site's logins (click to fill, copy username or
   password; passwords are copied with `pass show -c`, so pass clears them). "Manage Passwords" opens the
   same list for the whole store in a tab.
+
+## Screenshots
+
+| Generated passwords | Save prompt | Toolbar panel |
+| --- | --- | --- |
+| ![Use a Securely Generated Password](amo/screenshots/2-generated-password.png) | ![Save password for example.com?](amo/screenshots/3-save-prompt.png) | ![The toolbar panel](amo/screenshots/4-toolbar-panel.png) |
+
+The screenshots are real Firefox renders of passfox's UI on a mock page with
+made-up logins; `amo/screenshots/stage.html` sets each scene up (see the
+comment in it).
 
 ## Layout of your store
 
@@ -83,6 +100,10 @@ addons.mozilla.org with the listing text in
 [`amo/metadata.json`](amo/metadata.json). It doesn't wait for AMO: listed
 versions are reviewed by people, and AMO signs and publishes each one when
 it's approved.
+
+The listing's text, tags, icon and screenshots live in [`amo/`](amo) and are
+pushed to AMO by [`.github/workflows/amo-listing.yml`](.github/workflows/amo-listing.yml)
+whenever they change on `main` (or when run by hand).
 
 One-time setup: create an API key at
 https://addons.mozilla.org/developers/addon/api/key/ and store it as repository

@@ -23,5 +23,10 @@
     "compatibility": [
       "firefox"
     ]
-  }
+  },
+  "tags": [
+    "password manager",
+    "privacy",
+    "security"
+  ]
 }

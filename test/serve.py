@@ -24,6 +24,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def do_GET(self):
+        # /delay?ms=N answers after N ms: a page can hold its load event
+        # (and so a headless screenshot) until it has finished setting up.
+        if self.path.startswith("/delay"):
+            import time, urllib.parse
+            ms = int(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("ms", ["1000"])[0])
+            time.sleep(min(ms, 10000) / 1000)
+            self.send_response(204)
+            self.end_headers()
+            return
+        super().do_GET()
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
         self.rfile.read(length)  # never logged or stored

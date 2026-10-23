@@ -1,0 +1,18 @@
+[
+  {
+    "file": "1-fill-dropdown.png",
+    "caption": "Click a login field to pick a login from your pass store, in Firefox's own autocomplete style."
+  },
+  {
+    "file": "2-generated-password.png",
+    "caption": "On sign-up forms, \"Use a Securely Generated Password\" runs pass generate and fills both fields."
+  },
+  {
+    "file": "3-save-prompt.png",
+    "caption": "After signing in with a new or changed password, passfox offers to save it to pass."
+  },
+  {
+    "file": "4-toolbar-panel.png",
+    "caption": "The toolbar panel lists this site's logins, with copy buttons and a search over your store."
+  }
+]

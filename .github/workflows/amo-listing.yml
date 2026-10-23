@@ -1,0 +1,21 @@
+name: AMO listing
+
+# Keeps the addons.mozilla.org listing (text, tags, icon, screenshots) in
+# sync with amo/, without submitting a new version.
+
+on:
+  push:
+    branches: [main]
+    paths: ["amo/**", "tools/amo-listing.py"]
+  workflow_dispatch:
+
+jobs:
+  listing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Update listing
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: python3 -I tools/amo-listing.py
