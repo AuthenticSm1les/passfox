@@ -5,173 +5,175 @@
 [![AUR](https://img.shields.io/aur/version/passfox-host?label=AUR%20passfox-host)](https://aur.archlinux.org/packages/passfox-host)
 [![License: MPL-2.0](https://img.shields.io/github/license/AuthenticSm1les/passfox)](LICENSE)
 
-Fill and save Firefox logins from [pass](https://www.passwordstore.org/), with
-the look and behaviour of Firefox's built-in password manager.
+**Your [pass](https://www.passwordstore.org/) passwords in Firefox, looking
+and working like Firefox's own password manager.**
+
+passfox fills logins from your pass store, offers to save new and changed
+passwords back to it, and generates new ones with `pass generate`. It's built
+from Firefox's own design, so the login dropdown and the save prompt look
+just like Firefox's, in light and dark. Your passwords stay in pass: passfox
+only connects it to Firefox.
 
 ![The passfox login dropdown on a sign-in form](amo/screenshots/1-fill-dropdown.png)
 
-- **Autocomplete popup** on login fields: a copy of `#PopupAutoComplete`
-  (username, "From this website", a hover edit button, the "Manage Passwords"
-  footer, ↑/↓/Enter/Esc), plus Firefox's yellow `:autofill` highlight.
-- **Save / Update doorhanger** after you submit a new or changed password:
-  "Save password for host?" with Username (with a ▾ list of usernames seen in
-  the form and saved for the site) and Password (with a reveal eye) fields,
-  Not now ▾ (Never save) and Save. Writes with `pass insert`. It opens as a
-  real Firefox panel hanging from the passfox toolbar button; while the save
-  is pending (60 s), clicking the button brings it back, like Firefox's key
-  icon. Pin passfox to the toolbar, otherwise Firefox hangs the panel from
-  the Extensions (puzzle) button. If Firefox won't open the panel (window not
-  focused), the doorhanger is drawn inside the page instead.
-- **Generated passwords** on sign-up and change-password forms: "Use a
-  Securely Generated Password" runs `pass generate` (with your pass length
-  and character settings) into `www/<host>/passfox-generated-<time>` and fills the password
-  and confirmation fields. Like Firefox, a filled generated password shows in
-  clear text while its field has focus (until you clear or replace it); the
-  field is masked again before the form is submitted, and form history never
-  sees it. After you submit, "Add username to saved
-  password?" renames it to `www/<host>/<username>` (or, if that login exists,
-  moves the new password into it). passfox only ever renames or removes
-  `passfox-generated-*` entries.
-- **Toolbar panel** listing this site's logins (click to fill, copy username or
-  password; passwords are copied with `pass show -c`, so pass clears them). "Manage Passwords" opens the
-  same list for the whole store in a tab.
-
-## Screenshots
-
-| Generated passwords | Save prompt | Toolbar panel |
+| Generate passwords | Save new logins | Browse your logins |
 | --- | --- | --- |
 | ![Use a Securely Generated Password](amo/screenshots/2-generated-password.png) | ![Save password for example.com?](amo/screenshots/3-save-prompt.png) | ![The toolbar panel](amo/screenshots/4-toolbar-panel.png) |
 
-The screenshots are real Firefox renders of passfox's UI on a mock page with
-made-up logins; `amo/screenshots/stage.html` sets each scene up (see the
-comment in it).
+## What you need
 
-## Layout of your store
-
-passfox only works with website logins kept as `www/<domain>/<username>`:
-`www/github.com/alice` is user `alice` on `github.com`. A `login:`,
-`username:`, `user:` or `email:` line in the entry overrides the username.
-Subdomains match their base domain (`gist.github.com` ↔ `github.com`), with
-exact-host matches listed first. New logins are saved as
-`www/<host>/<username>` with the password on the first line followed by
-`login: <username>` and `url: <site origin>` (e.g. `url: https://github.com`).
-Updates keep every line of the entry and only add a `login:` or `url:` line
-if it has none yet (`user:`, `username:`, `email:`, `website:` and `site:`
-count too).
-
-Everything outside `www/` (tokens, TOTP seeds, keys) is left alone: passfox
-never lists, decrypts, copies or writes it. To use other or more folders, set
-`PASSFOX_LOGIN_DIRS` (colon-separated, default `www`) in the environment
-Firefox starts with.
+- Firefox 142 or newer, on Linux or another unix-like system
+- [pass](https://www.passwordstore.org/) with your logins stored as
+  `www/<website>/<username>` (see [Your store](#your-store))
+- Python 3
+- To copy passwords: `wl-copy` (Wayland) or `xclip` (X11), the same tools
+  pass uses for `pass show -c`
 
 ## Install
 
-passfox has two parts: the Firefox add-on, and a small native host that runs
-`pass` for it. You need `pass`, `gpg` and Python 3.
+passfox comes in two parts: the Firefox add-on, and a small helper that lets
+it run `pass` on your computer.
 
-1. **Add-on:** install passfox from
+1. **Install the add-on** from
    [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/passfox/).
-2. **Native host:** on Arch Linux, install
-   [`passfox-host`](https://aur.archlinux.org/packages/passfox-host) from the
-   AUR (it installs the host system-wide). Elsewhere, from a clone of this
-   repository (or the `passfox-host-<version>.tar.gz` release file), run:
+2. **Install the helper.**
+   - On Arch Linux, from the AUR:
 
-   ```sh
-   ./install.sh
-   ```
+     ```sh
+     paru -S passfox-host
+     ```
 
-   This copies `host/passfox_host.py` to `~/.local/share/passfox/` and
-   registers it in `~/.mozilla/native-messaging-hosts/`.
-3. **Pin passfox to the toolbar** (Extensions menu → passfox → Pin to
-   Toolbar), so the save prompt hangs from its button.
+   - Anywhere else, download `passfox-host-<version>.tar.gz` from the
+     [latest release](https://github.com/AuthenticSm1les/passfox/releases/latest),
+     unpack it, and run:
 
-Decryption goes through your gpg-agent, so pinentry asks for your passphrase
-just as it does for `pass show`.
+     ```sh
+     ./install.sh
+     ```
 
-To try a development copy instead: `about:debugging` → This Firefox → Load
-Temporary Add-on → `extension/manifest.json` (removed when Firefox restarts).
+3. **Pin passfox to the toolbar**: open the Extensions menu (the puzzle
+   piece), click the gear next to passfox, and choose *Pin to Toolbar*. The
+   save prompt opens under this button.
 
-## Releasing
+## Using passfox
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) runs when a
-tag matching the manifest version is pushed. It lints the add-on, publishes a
-GitHub release with the native host tarball, and submits the version to
-addons.mozilla.org with the listing text in
-[`amo/metadata.json`](amo/metadata.json). It doesn't wait for AMO: listed
-versions are reviewed by people, and AMO signs and publishes each one when
-it's approved.
+### Fill a login
 
-The listing's text, tags, icon and screenshots live in [`amo/`](amo) and are
-pushed to AMO by [`.github/workflows/amo-listing.yml`](.github/workflows/amo-listing.yml)
-whenever they change on `main` (or when run by hand).
+Click into a username or password field on a site you have logins for. A
+dropdown lists the matching logins from your store; click one, or use the
+↑ and ↓ keys and press Enter. passfox fills the username and password and
+highlights them in yellow, as Firefox does.
 
-One-time setup: create an API key at
-https://addons.mozilla.org/developers/addon/api/key/ and store it as repository
-secrets:
+Your gpg-agent decrypts the password, so pinentry may ask for your passphrase
+just as `pass show` would.
 
-```sh
-gh secret set AMO_JWT_ISSUER
-gh secret set AMO_JWT_SECRET
+### Save or update a login
+
+After you sign in with a password passfox doesn't know yet, it asks
+**Save password for example.com?** under its toolbar button. You can correct
+the username (the ▾ lists the usernames from the form and your saved ones) and
+check the password with the eye button before you click **Save**. If you
+signed in with a new password for a saved login, it asks
+**Update password for example.com?** instead.
+
+Nothing is written until you click Save or Update. **Not now** leaves your
+store alone, and **Never save** (under the ▾ next to it) stops asking for that
+site. If you close the prompt by accident, click the passfox button within a
+minute to get it back.
+
+passfox can't tell whether a site accepted your password, so if a sign-in
+fails, choose Not now.
+
+### Generate a password
+
+On sign-up and change-password forms, the password field's dropdown offers
+**Use a Securely Generated Password**. passfox runs `pass generate` (with your
+own pass length and character settings), fills the password and its
+confirmation field, and shows the new password while the field has focus.
+
+The new password is saved right away, as Firefox does, without a username at
+first. After you submit the form, passfox asks
+**Add username to saved password?** so the entry gets the right name.
+
+### The toolbar button
+
+Click the passfox button to see the logins for the site you're on: click a
+login to fill it, or use the buttons beside it to copy the username or the
+password. Passwords are copied with `pass show -c`, so pass clears the
+clipboard again after its usual 45 seconds. **Manage Passwords** opens a
+searchable list of all your logins in a tab.
+
+## Your store
+
+passfox reads website logins from the `www/` folder of your store, one entry
+per login:
+
+```
+www/github.com/alice          → user alice on github.com
+www/accounts.example.com/sam  → user sam on accounts.example.com
 ```
 
-Then, for each release, bump `version` in `extension/manifest.json`, commit,
-and push a matching tag:
+Logins for a site's subdomains are offered too, for example
+`gist.github.com` logins on `github.com`. If an entry has a `login:`,
+`username:`, `user:` or `email:` line, that's used as the username.
 
-```sh
-git tag v0.4.0 && git push origin v0.4.0
+Entries passfox saves look like this, with the password on the first line:
+
+```
+<password>
+login: alice
+url: https://github.com
 ```
 
-The AUR package
-([`passfox-host`](https://aur.archlinux.org/packages/passfox-host)) builds
-from the tag, so bump its `pkgver` there too.
+When passfox updates an entry, only the password line changes; every other
+line is kept.
 
-## How the UI copies Firefox
+**Everything outside `www/` is left alone.** Tokens, TOTP seeds, keys and
+notes elsewhere in your store are never shown, decrypted, copied or changed by
+passfox.
 
-Firefox's chrome can't be extended, so passfox redraws the popup and doorhanger
-inside a closed shadow root on the page. The styles come from Firefox's own
-source:
+## Settings
 
-- `extension/vendor/firefox/` holds Firefox's design tokens
-  (`tokens-shared.css`, `tokens-platform.css`) and icons, pulled from the
-  installed Firefox's `omni.ja` by `tools/vendor-firefox.sh`. The `rem` units
-  are rewritten to `--passfox-rem` (the browser UI font size), because a
-  page's own root font size would otherwise rescale them.
-- `extension/shared/firefox.css` is adapted from `popup.css`,
-  `autocomplete.css`, `autocomplete-row-item.css`, `popupnotification.css`,
-  `moz-button.css` and `moz-input-text.css`.
+passfox follows your pass configuration, such as `PASSWORD_STORE_DIR`,
+`PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and
+`PASSWORD_STORE_CLIP_TIME`, as long as they're set in the environment Firefox
+starts in.
 
-Firefox 158 ships with its "Nova" design on (`browser.nova.enabled`), whose
-values sit in `@media -moz-pref(...)` blocks that web content can't evaluate;
-`tools/unwrap-nova.py` applies them unconditionally when vendoring, and the
-icons use their Nova artwork.
+If your logins live somewhere other than `www/`, set `PASSFOX_LOGIN_DIRS` to
+the folder names, separated by colons (for example `www:web`).
 
-The tokens use system colours (Field, AccentColor, Menu), like Firefox's chrome
-on Linux does, so the result follows your GTK theme in light and dark. After a
-Firefox update, run `tools/vendor-firefox.sh` again to pick up design changes.
+## Privacy
 
-Vendored and adapted Firefox files are under the MPL-2.0 and keep its headers.
+passfox collects no data and makes no network requests. Passwords are only
+decrypted when you fill, copy or save a login, by your own gpg-agent, and only
+travel between Firefox and the helper on your computer.
 
-## Development
+## Troubleshooting
 
-```sh
-python3 -I test/host_test.py              # host tests with a throwaway GPG key and store
-python3 -I test/serve.py 8765 .           # then open /test/harness.html, /test/popup-harness.html(#pending)
-```
+**No dropdown appears.** Check that the helper is installed: the passfox
+toolbar panel says *Can't reach pass* when it isn't. Also check that the
+site's logins are in `www/<website>/…`.
 
-The harness pages run the real content scripts and popup against a fake
-extension API. `test/inject.js` does the same for any page served that way.
+**The save prompt hangs from the puzzle piece.** Pin passfox to the toolbar
+(see [Install](#install)).
 
-### Trying it in Firefox
+**Copying a password does nothing.** Install `wl-copy` (Wayland) or `xclip`
+(X11); pass needs one of them for `pass show -c`.
 
-```sh
-python3 -I test/serve.py                  # mock login pages on http://localhost:8766/
-```
+**pinentry doesn't appear.** passfox uses your gpg-agent like `pass` does; if
+`pass show` works in a terminal but not from Firefox, set a graphical pinentry
+(for example `pinentry-program /usr/bin/pinentry-gnome3` in
+`~/.gnupg/gpg-agent.conf`).
 
-With the add-on loaded, open http://localhost:8766/ for eight scenarios
-(basic form, identifier-first, script-built form, change password, sign-up,
-edge positions, hostile page styles, login inside an iframe). Each page lists
-what to check. Form posts are thrown away and redirected to a welcome page.
-The pages run on `localhost`, so saving a login there writes
-`www/localhost/<user>` to your store; remove those entries afterwards with
-`pass rm -r www/localhost` and `pass rm -r www/auth.localhost`
-(`pass rm` takes one name at a time).
+## Contributing
+
+Bug reports and pull requests are welcome on
+[GitHub](https://github.com/AuthenticSm1les/passfox/issues). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for how passfox is built, tested and
+released.
+
+## License
+
+[MPL-2.0](LICENSE). passfox includes design tokens, icons and styles from
+Firefox, which are also under the MPL-2.0. passfox is an independent project
+and isn't made or endorsed by Mozilla.
