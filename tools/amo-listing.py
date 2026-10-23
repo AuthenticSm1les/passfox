@@ -12,6 +12,7 @@ import hmac
 import json
 import os
 import pathlib
+import re
 import secrets
 import sys
 import time
@@ -65,16 +66,24 @@ def request(method, url, json_body=None, fields=None, files=None):
     print(f"{method} {url}" + (f"  files={[p.name for p in files.values()]}" if files else ""))
     if DRY_RUN:
         return {}
-    req = urllib.request.Request(url, data=data, method=method)
-    req.add_header("Authorization", f"JWT {jwt_token()}")
-    if content_type:
-        req.add_header("Content-Type", content_type)
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            text = resp.read().decode()
-    except urllib.error.HTTPError as error:
-        sys.exit(f"{method} {url} failed: {error.code} {error.read().decode()[:500]}")
-    return json.loads(text) if text.strip() else {}
+    for attempt in range(10):
+        req = urllib.request.Request(url, data=data, method=method)
+        req.add_header("Authorization", f"JWT {jwt_token()}")
+        if content_type:
+            req.add_header("Content-Type", content_type)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                text = resp.read().decode()
+            return json.loads(text) if text.strip() else {}
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode()
+            if error.code != 429:
+                sys.exit(f"{method} {url} failed: {error.code} {detail[:500]}")
+            # AMO throttles listing edits; wait as long as it asks.
+            wait = error.headers.get("Retry-After") or (re.findall(r"(\d+) seconds", detail) or ["60"])[0]
+            print(f"  throttled, waiting {int(wait) + 2}s")
+            time.sleep(int(wait) + 2)
+    sys.exit(f"{method} {url} still throttled after retries")
 
 
 def main():
