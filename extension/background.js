@@ -3,7 +3,6 @@
 const NATIVE_HOST = "io.github.smiley.passfox";
 const LIST_TTL_MS = 60_000;
 const PENDING_TTL_MS = 60_000;
-const CLIPBOARD_CLEAR_MINUTES = 0.75;
 const EXTENSION_ORIGIN = browser.runtime.getURL("");
 
 // Two-label public suffixes common enough to matter for base-domain matching.
@@ -89,16 +88,6 @@ function isExtensionPage(sender) {
   return sender.id === browser.runtime.id && sender.url?.startsWith(EXTENSION_ORIGIN);
 }
 
-async function copyToClipboard(text) {
-  await navigator.clipboard.writeText(text);
-  browser.alarms.create("clear-clipboard", { delayInMinutes: CLIPBOARD_CLEAR_MINUTES });
-}
-
-browser.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name == "clear-clipboard") {
-    navigator.clipboard.writeText("").catch(() => {});
-  }
-});
 
 /* ::::: save / update doorhanger state ::::: */
 
@@ -281,8 +270,13 @@ const handlers = {
     if (!isExtensionPage(sender)) {
       throw new Error("Not allowed");
     }
-    const entry = await native({ action: "get", path: msg.path });
-    await copyToClipboard(msg.field == "username" ? entry.username ?? "" : entry.password);
+    if (msg.field == "username") {
+      const entry = await native({ action: "get", path: msg.path });
+      await navigator.clipboard.writeText(entry.username ?? "");
+    } else {
+      // pass copies it and restores the clipboard after its clip time.
+      await native({ action: "clip", path: msg.path });
+    }
     return { ok: true };
   },
 

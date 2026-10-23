@@ -22,7 +22,6 @@ NON_LOGIN_DIRS = set(filter(None, os.environ.get("PASSFOX_NON_LOGIN_DIRS", "otp:
 # Entries made by "Use a Securely Generated Password" before a username is
 # known; they count as having no username until adopted.
 GENERATED_PREFIX = "passfox-generated-"
-GENERATED_LENGTH = "15"  # Firefox's DEFAULT_PASSWORD_LENGTH
 
 
 def read_message():
@@ -95,6 +94,9 @@ def run_pass(args, stdin=None):
         text=True,
         timeout=120,
         env={**os.environ, "PASSWORD_STORE_DIR": STORE},
+        # pass -c leaves a process behind to restore the clipboard later;
+        # keep it out of our process group so it outlives this host.
+        start_new_session=True,
     )
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or f"pass exited with {proc.returncode}")
@@ -147,8 +149,16 @@ def cmd_generate(msg):
         raise ValueError("generated entries must be named " + GENERATED_PREFIX + "*")
     if os.path.exists(os.path.join(STORE, path + ".gpg")):
         raise ValueError("entry already exists")
-    run_pass(["generate", "--", path, GENERATED_LENGTH])
+    # Length and character set come from the user's pass settings.
+    run_pass(["generate", "--", path])
     return {"entry": describe(path), **cmd_get({"path": path})}
+
+
+def cmd_clip(msg):
+    """Copy the password with pass itself, which restores the previous
+    clipboard after PASSWORD_STORE_CLIP_TIME."""
+    run_pass(["show", "--clip", "--", check_path(msg.get("path"))])
+    return {"ok": True}
 
 
 def cmd_adopt(msg):
@@ -173,6 +183,7 @@ COMMANDS = {
     "get": cmd_get,
     "insert": cmd_insert,
     "generate": cmd_generate,
+    "clip": cmd_clip,
     "adopt": cmd_adopt,
 }
 

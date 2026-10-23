@@ -17,7 +17,6 @@
   "permissions": [
     "nativeMessaging",
     "storage",
-    "alarms",
     "clipboardWrite"
   ],
   "host_permissions": [

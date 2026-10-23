@@ -16,14 +16,14 @@ the look and behaviour of Firefox's built-in password manager.
   the Extensions (puzzle) button. If Firefox won't open the panel (window not
   focused), the doorhanger is drawn inside the page instead.
 - **Generated passwords** on sign-up and change-password forms: "Use a
-  Securely Generated Password" runs `pass generate` (15 characters, like
-  Firefox) into `www/<host>/passfox-generated-<time>` and fills the password
+  Securely Generated Password" runs `pass generate` (with your pass length
+  and character settings) into `www/<host>/passfox-generated-<time>` and fills the password
   and confirmation fields. After you submit, "Add username to saved
   password?" renames it to `www/<host>/<username>` (or, if that login exists,
   moves the new password into it). passfox only ever renames or removes
   `passfox-generated-*` entries.
 - **Toolbar panel** listing this site's logins (click to fill, copy username or
-  password; the clipboard is cleared after 45 s). "Manage Passwords" opens the
+  password; passwords are copied with `pass show -c`, so pass clears them). "Manage Passwords" opens the
   same list for the whole store in a tab.
 
 ## Layout of your store

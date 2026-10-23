@@ -34,7 +34,11 @@ def main():
             **os.environ,
             "GNUPGHOME": f"{tmp}/gnupg",
             "PASSWORD_STORE_DIR": f"{tmp}/store",
+            # passfox must defer to the user's pass settings.
+            "PASSWORD_STORE_GENERATED_LENGTH": "21",
         }
+        env.pop("DISPLAY", None)
+        env.pop("WAYLAND_DISPLAY", None)
         os.makedirs(env["GNUPGHOME"], mode=0o700)
         subprocess.run(
             ["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
@@ -77,9 +81,9 @@ def main():
         assert got == {"password": "two", "username": "alice", "url": "https://github.com"}, got
         assert "error" in ask(env, {"action": "insert", "path": "www/x/y", "username": "a", "password": "a\nb"})
 
-        # Generate like Firefox (15 characters), then adopt into a new login...
+        # Generate with pass's own settings, then adopt into a new login...
         gen = ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
-        assert len(gen["password"]) == 15 and gen["entry"]["username"] == "", gen
+        assert len(gen["password"]) == 21 and gen["entry"]["username"] == "", gen
         assert "error" in ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
         assert "error" in ask(env, {"action": "generate", "path": "www/new.test/erin"})
         assert ask(env, {"action": "adopt", "from": "www/new.test/passfox-generated-1", "to": "www/new.test/erin", "username": "erin"})["ok"]
@@ -94,6 +98,8 @@ def main():
         # Only generated entries can be adopted (i.e. renamed or removed).
         assert "error" in ask(env, {"action": "adopt", "from": "www/github.com/work", "to": "www/github.com/x", "username": "x"})
         assert "error" in ask(env, {"action": "bogus"})
+        # Copying goes through pass -c (no display here, so pass's own error).
+        assert "display" in ask(env, {"action": "clip", "path": "www/github.com/alice"}).get("error", "").lower()
 
         subprocess.run(["gpgconf", "--kill", "gpg-agent"], env=env, capture_output=True)
     print("host tests passed")
