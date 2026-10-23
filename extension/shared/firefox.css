@@ -1,0 +1,509 @@
+/* Firefox 158 password-manager surfaces, rebuilt for web content.
+ *
+ * Adapted from Firefox's popup.css, autocomplete.css,
+ * autocomplete-row-item.css, popupnotification.css, moz-button.css,
+ * moz-input-text.css and login-doorhanger-username-field.css.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+:host,
+:root {
+  color-scheme: light dark;
+}
+
+:host {
+  all: initial;
+  color-scheme: light dark;
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  z-index: 2147483647;
+  font: message-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ::::: panel frame (popup.css :is(menupopup, panel)::part(content)) ::::: */
+
+.panel {
+  /* A page's `* { ... !important }` beats :host and reaches the host
+   * element, so cut every inherited property off again here. */
+  all: initial;
+  color-scheme: light dark;
+  font: message-box;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  padding: var(--panel-padding);
+  color: var(--panel-text-color);
+  background: var(--panel-background-color);
+  border-radius: var(--panel-border-radius);
+  border: 1px solid var(--panel-border-color);
+  box-shadow: var(--panel-box-shadow);
+  overflow: clip;
+  --background-color-canvas: var(--panel-background-color);
+  --button-icon-fill: var(--panel-icon-fill, currentColor);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+/* Non-arrow panels and menupopups */
+.panel.menu {
+  --panel-background-color: Menu;
+  --panel-text-color: MenuText;
+  --panel-padding: var(--panel-padding-block);
+  --panel-border-radius: 6px;
+  font: menu;
+}
+
+/* ::::: #PopupAutoComplete ::::: */
+
+.autocomplete {
+  --panel-text-color: FieldText;
+  --panel-background-color: Field;
+  --panel-padding: var(--panel-padding-block) 0;
+  --panel-border-radius: var(--popup-border-radius);
+  font: menu;
+  min-width: 250px;
+
+  > .richlistbox {
+    margin: 1px;
+    padding-block: var(--space-medium);
+    padding-inline: var(--space-small);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+.richlistitem {
+  display: flex;
+  cursor: default;
+
+  &:not(:only-child) {
+    margin-block-end: var(--space-xsmall);
+  }
+
+  &[footer] {
+    margin-block-end: 0;
+
+    &:not(:first-child) {
+      border-block-start: 1px solid var(--panel-separator-color);
+      padding-block-start: var(--space-xsmall);
+    }
+  }
+
+  > .row-item-host {
+    flex: 1;
+    min-width: 0;
+    border: var(--focus-outline-width) solid transparent;
+    border-radius: var(--border-radius-large);
+  }
+
+  .richlistbox:not([pointerselected]) > &[selected] > .row-item-host {
+    border-color: var(--focus-outline-color);
+  }
+}
+
+/* autocomplete-row-item shadow styles */
+.row-item-host {
+  --icon-height: var(--icon-size);
+  --icon-width: var(--icon-size);
+  --row-item-column-gap: var(--space-small);
+  --row-item-padding: var(--space-small);
+  --row-item-border-radius: var(--border-radius-large);
+  --button-background-color-ghost-hover: color-mix(in srgb, currentColor 15%, transparent);
+  --button-background-color-ghost-active: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.row-item {
+  display: flex;
+  align-items: center;
+  column-gap: var(--row-item-column-gap);
+  padding: var(--row-item-padding);
+  border-radius: var(--row-item-border-radius);
+
+  &:active {
+    color: var(--button-text-color-active);
+    background-color: var(--button-background-color-active);
+  }
+
+  .row-item-host:hover > & {
+    color: var(--button-text-color-hover);
+    background-color: var(--button-background-color-hover);
+  }
+
+  > .icon {
+    height: var(--icon-height);
+    width: var(--icon-width);
+    color: var(--button-icon-fill);
+    object-fit: contain;
+  }
+}
+
+.labels-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  > .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > .description {
+    color: var(--text-color-deemphasized);
+  }
+}
+
+.row-item > .secondary-action {
+  visibility: hidden;
+  margin-inline-start: auto;
+
+  .row-item-host:is(:hover, [selected]:not([pointerselected])) & {
+    visibility: visible;
+  }
+}
+
+/* ::::: moz-button ::::: */
+
+.moz-button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  box-sizing: border-box;
+  min-height: var(--button-min-height);
+  border: var(--button-border);
+  border-radius: var(--button-border-radius);
+  background-color: var(--button-background-color);
+  color: var(--button-text-color);
+  padding: var(--button-padding);
+  font: inherit;
+  font-weight: var(--button-font-weight);
+  font-size: var(--button-font-size);
+  user-select: none;
+  position: relative;
+
+  &:hover {
+    background-color: var(--button-background-color-hover);
+    border-color: var(--button-border-color-hover);
+    color: var(--button-text-color-hover);
+  }
+
+  &:hover:active:not(:disabled) {
+    background-color: var(--button-background-color-active);
+    border-color: var(--button-border-color-active);
+    color: var(--button-text-color-active);
+  }
+
+  &[aria-expanded="true"]:not(:hover, :disabled) {
+    background-color: var(--button-background-color-selected);
+    border-color: var(--button-border-color-selected);
+    color: var(--button-text-color-selected);
+  }
+
+  &:disabled {
+    background-color: var(--button-background-color-disabled);
+    border-color: var(--button-border-color-disabled);
+    color: var(--button-text-color-disabled);
+    opacity: var(--button-opacity-disabled);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+    z-index: 1;
+  }
+
+  &[type="primary"] {
+    background-color: var(--button-background-color-primary);
+    border-color: var(--button-border-color-primary);
+    color: var(--button-text-color-primary);
+
+    &:hover {
+      background-color: var(--button-background-color-primary-hover);
+      border-color: var(--button-border-color-primary-hover);
+      color: var(--button-text-color-primary-hover);
+    }
+
+    &:hover:active:not(:disabled) {
+      background-color: var(--button-background-color-primary-active);
+      border-color: var(--button-border-color-primary-active);
+      color: var(--button-text-color-primary-active);
+    }
+  }
+
+  &.icon {
+    width: var(--button-size-icon);
+    height: var(--button-size-icon);
+    min-height: auto;
+    padding: var(--button-padding-icon);
+  }
+
+  &.ghost {
+    background-color: var(--button-background-color-ghost);
+    border-color: var(--button-border-color-ghost);
+
+    &:hover {
+      background-color: var(--button-background-color-ghost-hover);
+    }
+
+    &:hover:active:not(:disabled) {
+      background-color: var(--button-background-color-ghost-active);
+    }
+  }
+
+  > svg {
+    color: var(--button-icon-fill);
+  }
+}
+
+.moz-button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-small);
+}
+
+.split-button {
+  position: relative;
+  display: flex;
+  gap: var(--button-gap-split);
+
+  /* Invisible <select> whose native dropdown stands in for the menupopup.
+   * Its width sets the menu's minimum width; aligning its end with the
+   * chevron's end opens the menu "after_end" like Firefox's. */
+  > .native-menu {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: 0;
+    width: 9em;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    font: menu;
+  }
+
+  > .main {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    border-inline-end-width: var(--button-border-width-split);
+  }
+
+  > .chevron {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    border-inline-start-width: var(--button-border-width-split);
+    padding-inline: var(--space-small);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 0;
+      transform: translateY(-50%);
+      background-color: var(--button-split-separator-background-color);
+      width: var(--border-width);
+      height: 50%;
+    }
+  }
+
+  &:hover > .chevron::before,
+  > .chevron[aria-expanded="true"]::before {
+    background-color: transparent;
+  }
+}
+
+/* ::::: moz-input-text ::::: */
+
+.moz-input {
+  display: block;
+
+  > label {
+    display: block;
+  }
+
+  input {
+    display: block;
+    width: 100%;
+    margin: var(--space-xsmall) 0 0;
+    min-height: var(--input-text-min-height);
+    padding-inline: var(--space-medium);
+    border: var(--input-text-border);
+    border-radius: var(--input-text-border-radius);
+    background-color: var(--input-text-background-color);
+    color: var(--input-text-color);
+    font: inherit;
+    accent-color: var(--color-accent-primary);
+
+    &:focus-visible {
+      outline: var(--focus-outline);
+    }
+
+    &::placeholder {
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+/* ::::: menupopup items ::::: */
+
+.menuitem {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-item-large);
+  margin: var(--panel-menuitem-margin);
+  padding: var(--panel-menuitem-padding);
+  border-radius: var(--panel-menuitem-border-radius);
+  white-space: nowrap;
+  cursor: default;
+
+  &:is(:hover, :focus-visible) {
+    outline: none;
+    background-color: var(--button-background-color-hover);
+  }
+
+  &:hover:active {
+    background-color: var(--button-background-color-active);
+  }
+}
+
+/* ::::: popupnotification (password-notification) ::::: */
+
+.doorhanger {
+  --panel-padding: 0;
+  font: caption;
+
+  .body-container {
+    display: flex;
+    align-items: start;
+    padding: 16px;
+  }
+
+  .notification-icon {
+    height: var(--icon-size);
+    width: var(--icon-size);
+    margin-inline-end: var(--space-small);
+  }
+
+  .notification-body {
+    flex: 1 auto;
+    width: calc(31em - 32px);
+    min-width: 0;
+  }
+
+  .description {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .content {
+    margin-top: var(--space-small);
+  }
+
+  .login-doorhanger-field {
+    margin-block-start: var(--space-large);
+
+    &:first-child {
+      margin-block-start: var(--space-small);
+    }
+  }
+
+  .panel-footer {
+    margin: var(--space-small) var(--space-large) var(--space-large);
+  }
+
+  /* panel[type="arrow"] entrance */
+  transition-property: transform, opacity;
+  transition-duration: 0.18s;
+  transition-timing-function: cubic-bezier(0.07, 0.95, 0, 1), ease-out;
+
+  &.opening {
+    opacity: 0;
+
+    @media not (prefers-reduced-motion) {
+      transform: translateY(-70px);
+    }
+  }
+}
+
+/* ::::: login-doorhanger-username-field ::::: */
+
+.autocomplete-container {
+  position: relative;
+
+  /* Invisible <select> under the field whose native dropdown lists the
+   * suggestions; covering the input makes the dropdown match its width. */
+  > .native-menu {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: var(--input-text-min-height);
+    opacity: 0;
+    pointer-events: none;
+    font: inherit;
+  }
+
+  &.has-dropmarker input {
+    padding-inline-end: calc(2 * var(--space-small) + var(--icon-size));
+    text-overflow: ellipsis;
+  }
+}
+
+.ac-dropmarker {
+  position: absolute;
+  inset-inline-end: var(--space-large);
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--icon-color);
+  /* Sits on the input's top margin, so recentre on the input itself. */
+  margin-top: calc(var(--space-xsmall) / 2);
+}
+
+/* ::::: input[type=password]::-moz-reveal (forms.css) ::::: */
+
+.reveal-container {
+  position: relative;
+
+  input {
+    padding-inline-end: calc(var(--space-medium) + 1em + 2px);
+  }
+}
+
+.reveal {
+  all: unset;
+  position: absolute;
+  inset-inline-end: var(--space-medium);
+  top: 50%;
+  translate: 0 -50%;
+  margin-top: calc(var(--space-xsmall) / 2);
+  margin-inline: 1px;
+  width: 1em;
+  height: 1em;
+  color: var(--input-text-color);
+  cursor: default;
+
+  > svg {
+    width: 100%;
+    height: 100%;
+  }
+}

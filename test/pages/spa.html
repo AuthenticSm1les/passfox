@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Script login</title><link rel="stylesheet" href="site.css"></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Script login</h1>
+<p>The form below is added two seconds after load, and signing in is handled by script.</p>
+<div id="app">Loading…</div>
+<script>
+  setTimeout(() => {
+    const app = document.getElementById("app");
+    app.innerHTML = `
+      <form id="f">
+        <label>Email <input id="email" type="email"></label>
+        <label>Password <input id="pw" type="password"></label>
+        <button type="button" id="go">Sign in</button>
+      </form>
+      <p id="status" aria-live="polite"></p>`;
+    // Like a framework: track values through input events only.
+    const state = { email: "", pw: "" };
+    app.querySelector("#email").addEventListener("input", e => (state.email = e.target.value));
+    app.querySelector("#pw").addEventListener("input", e => (state.pw = e.target.value));
+    app.querySelector("#go").addEventListener("click", () => {
+      document.getElementById("status").textContent = state.email && state.pw
+        ? `Signed in as ${state.email} (the app saw a ${state.pw.length}-character password).`
+        : "The app saw empty fields: input events did not reach it.";
+    });
+  }, 2000);
+</script>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>The dropdown works on fields that appear after the page loaded.</li>
+<li>After filling, clicking Sign in reports the username: the fill fired input events the app listens to.</li>
+<li>The button is a plain <code>type="button"</code> with no form post; clicking it should still offer to save a new login.</li>
+</ul>
+</div>
+</body>
+</html>

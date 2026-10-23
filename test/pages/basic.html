@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Basic login</title><link rel="stylesheet" href="site.css"></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Basic login</h1>
+<form method="post" action="/login">
+  <label>Username <input name="username" autocomplete="username"></label>
+  <label>Password <input name="password" type="password" autocomplete="current-password"></label>
+  <button>Log in</button>
+</form>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>Clicking into either field opens the dropdown under it, as wide as the field (at least 250px).</li>
+<li>Rows show the username and "From this website"; hovering shows the edit pencil.</li>
+<li>↓/↑ move a rounded accent ring, Enter fills both fields with the yellow highlight, Esc closes.</li>
+<li>Typing in the username field filters rows by prefix; typing a password hides the dropdown.</li>
+<li>Submitting a new login shows "Save password for localhost?" at the top left,
+and it is still there on the welcome page after the redirect.</li>
+<li>Submitting a saved username with a different password shows "Update password for localhost?".</li>
+</ul>
+</div>
+</body>
+</html>

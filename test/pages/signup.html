@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Sign up</title><link rel="stylesheet" href="site.css"></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Create an account</h1>
+<form method="post" action="/signup">
+  <label>Full name <input name="name" autocomplete="name"></label>
+  <label>Email <input name="email" type="email" autocomplete="email"></label>
+  <label>Choose a password <input name="password" type="password" autocomplete="new-password"></label>
+  <label>One-time code <input name="otp" inputmode="numeric" autocomplete="one-time-code"></label>
+  <button>Create account</button>
+</form>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>"Full name" and "One-time code" never get the dropdown.</li>
+<li>Note: the password field still offers saved logins. Firefox would offer
+"Use a Securely Generated Password" here instead, which passfox doesn't do yet.</li>
+<li>Submitting offers to save the new account.</li>
+</ul>
+</div>
+</body>
+</html>

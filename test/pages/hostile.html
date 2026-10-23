@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Hostile styles</title>
+<style>
+  /* Styles that leak into injected UI on careless extensions. */
+  html { font-size: 10px; }
+  body { font: 1.6rem/1.2 Georgia, serif; background: #1b1033; color: #ffd84d;
+    margin: 2rem auto; max-width: 46rem; padding: 0 1rem; }
+  * { letter-spacing: .1em !important; text-transform: uppercase; box-sizing: content-box; }
+  div, span, button { border-radius: 0 !important; color: lime !important; background: hotpink; }
+  svg { width: 64px !important; height: 64px !important; fill: red !important; }
+  .header { position: sticky; top: 0; z-index: 2147483646; background: #3a1f73;
+    padding: 1rem; color: white !important; }
+  form { display: grid; gap: 1rem; max-width: 30rem; margin: 3rem 0; }
+  input { font: inherit; padding: .6rem; background: black; color: white; border: 3px solid #ffd84d; }
+  a { color: inherit; }
+</style></head>
+<body>
+<div class="header">Hostile Corp · <a href="index.html">All tests</a></div>
+<h1>Sign in</h1>
+<form method="post" action="/login">
+  <label>Username <input name="u" autocomplete="username"></label>
+  <label>Password <input name="p" type="password"></label>
+  <button>Log in</button>
+</form>
+<p>What to check: the dropdown and doorhanger look exactly as on
+<a href="basic.html">Basic login</a>. No pink, lime, uppercase, wide letter
+spacing, square corners or giant red icons, and the 10px root font doesn't
+shrink them. The doorhanger draws above the sticky header.</p>
+</body>
+</html>

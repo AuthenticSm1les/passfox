@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- Renders passfox's in-page UI with a fake extension API.
+     Serve the project root (python3 -m http.server) and open /test/harness.html. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>passfox harness</title>
+    <style>
+      html { font-size: 10px; } /* hostile root size: the popup must not shrink */
+      body { font: 1.6rem sans-serif; margin: 4rem; }
+      form { display: grid; gap: 1rem; max-width: 32rem; margin-top: 12rem; }
+      input { font: inherit; padding: .6rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Sign in</h1>
+    <form id="login" onsubmit="event.preventDefault()">
+      <label>Email <input name="email" id="user" type="email" /></label>
+      <label>Password <input name="password" id="pass" type="password" /></label>
+      <button>Log in</button>
+    </form>
+    <script>
+      // Open the shadow root here so the harness can inspect it.
+      const attachShadow = Element.prototype.attachShadow;
+      Element.prototype.attachShadow = function (options) {
+        return (window.passfoxShadow = attachShadow.call(this, { ...options, mode: "open" }));
+      };
+      const listeners = [];
+      const logins = [
+        { path: "www/localhost/alice@example.com", domain: "localhost", username: "alice@example.com", exact: true },
+        { path: "www/localhost/bob", domain: "localhost", username: "bob", exact: true },
+        { path: "www/login.localhost/carol", domain: "login.localhost", username: "carol", exact: false },
+      ];
+      window.harnessLog = [];
+      window.browser = {
+        runtime: {
+          onMessage: { addListener: fn => listeners.push(fn) },
+          async sendMessage(msg) {
+            harnessLog.push(msg.type);
+            switch (msg.type) {
+              case "css": {
+                const files = ["tokens-shared.css", "tokens-platform.css"].map(f => `../extension/vendor/firefox/${f}`);
+                files.push("../extension/shared/firefox.css");
+                const texts = await Promise.all(files.map(f => fetch(f, { cache: "no-store" }).then(r => r.text())));
+                return { result: texts.join("\n") };
+              }
+              case "logins": return { result: logins };
+              case "fill": return { result: { path: msg.path, username: msg.path.split("/").at(-1), password: "correct horse" } };
+              case "submitted":
+                setTimeout(() => listeners.forEach(fn => fn({ type: "show-save", pending: {
+                  mode: "save", host: location.hostname, username: msg.username, password: msg.password } })), 0);
+                return { result: null };
+              case "pending": return { result: null };
+              default: window.harnessLast = msg; return { result: { ok: true } };
+            }
+          },
+        },
+      };
+    </script>
+    <script src="../extension/shared/icons.js"></script>
+    <script src="../extension/content/ui.js"></script>
+    <script src="../extension/shared/doorhanger.js"></script>
+    <script src="../extension/content/autofill.js"></script>
+    <script src="../extension/content/save-prompt.js"></script>
+  </body>
+</html>

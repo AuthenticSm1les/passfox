@@ -1,0 +1,13 @@
+/* Plain look shared by the passfox test pages. */
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+nav a { margin-inline-end: 1rem; }
+form { display: grid; gap: .75rem; max-width: 22rem; margin: 1.5rem 0; }
+label { display: grid; gap: .25rem; }
+input { font: inherit; padding: .45rem .6rem; }
+button { font: inherit; padding: .5rem 1rem; justify-self: start; }
+.expect { border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+.expect h2 { font-size: 1rem; margin: 0 0 .25rem; }
+.expect ul { margin: 0; padding-inline-start: 1.25rem; }
+code { font-size: .9em; }

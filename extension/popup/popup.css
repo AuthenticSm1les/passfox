@@ -1,0 +1,165 @@
+/* Toolbar panel laid out like a Firefox panel subview (panelUI-shared.css). */
+
+html {
+  font: message-box;
+}
+
+body {
+  margin: 0;
+  color: var(--panel-text-color);
+  background: var(--panel-background-color);
+}
+
+.panelview {
+  width: 22.35em;
+  display: flex;
+  flex-direction: column;
+}
+
+:root[view="all"] {
+  body {
+    background: var(--background-color-canvas);
+  }
+
+  .panelview {
+    width: auto;
+    max-width: 40em;
+    margin: var(--space-xlarge) auto;
+    border: 1px solid var(--panel-border-color);
+    border-radius: var(--panel-border-radius);
+    background: var(--panel-background-color);
+  }
+
+  #list {
+    max-height: none;
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--panel-menuitem-margin-inline);
+  min-height: calc(var(--size-item-large) + 2 * var(--panel-separator-padding-inline));
+
+  > h1 {
+    flex: auto;
+    margin: 0;
+    font-size: inherit;
+    font-weight: var(--font-weight-semibold);
+  }
+}
+
+.separator {
+  border-top: 1px solid var(--panel-separator-color);
+  margin: var(--panel-separator-padding-block) var(--panel-separator-padding-inline);
+
+  .panel-header + & {
+    margin-top: 0;
+  }
+}
+
+.search {
+  position: relative;
+  padding: var(--space-xsmall) var(--panel-menuitem-margin-inline);
+
+  > svg {
+    position: absolute;
+    inset-inline-start: calc(var(--panel-menuitem-margin-inline) + var(--space-medium));
+    top: 50%;
+    translate: 0 -50%;
+    color: var(--icon-color);
+    pointer-events: none;
+  }
+
+  > input {
+    width: 100%;
+    min-height: var(--input-text-min-height);
+    padding-inline: calc(2 * var(--space-medium) + var(--icon-size)) var(--space-xxsmall);
+    border: var(--input-text-border);
+    border-radius: var(--border-radius-circle);
+    background: var(--input-text-background-color);
+    color: var(--input-text-color);
+    font: inherit;
+
+    &:focus-visible {
+      outline: var(--focus-outline);
+    }
+  }
+}
+
+.panel-subview-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-small) 0;
+}
+
+#list {
+  max-height: 24em;
+  overflow-y: auto;
+}
+
+.subviewbutton {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+  margin: var(--panel-menuitem-margin);
+  min-height: var(--size-item-medium);
+  padding: var(--panel-menuitem-padding);
+  border: none;
+  border-radius: var(--panel-menuitem-border-radius);
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  flex-shrink: 0;
+  cursor: default;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--button-background-color-hover);
+    outline: none;
+  }
+
+  &:hover:active {
+    background-color: var(--button-background-color-active);
+  }
+
+  > .icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+  }
+
+  > .moz-button {
+    visibility: hidden;
+    --button-size-icon: var(--size-item-medium);
+  }
+
+  &:is(:hover, :focus-within) > .moz-button {
+    visibility: visible;
+  }
+}
+
+.labels-container {
+  flex: 1;
+}
+
+.message {
+  margin: 0;
+  padding: var(--space-large);
+  text-align: center;
+  color: var(--text-color-deemphasized);
+}
+
+/* Doorhanger mode: Firefox's panel supplies the frame. */
+:root[view="doorhanger"] {
+  body {
+    font: caption;
+  }
+
+  .doorhanger {
+    width: fit-content;
+  }
+}

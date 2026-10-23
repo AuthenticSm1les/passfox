@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Edge positions</title><link rel="stylesheet" href="site.css">
+<style>
+  .scroller { height: 9rem; overflow: auto; border: 1px dashed GrayText; padding: .5rem; }
+  .scroller form { margin: 6rem 0; }
+  .narrow input { width: 6rem; }
+  .bottom { position: fixed; bottom: .5rem; left: 1rem; right: 1rem; display: flex; gap: .5rem;
+    margin: 0; max-width: none; grid: none; padding: .5rem; background: Canvas;
+    border: 1px solid GrayText; border-radius: 8px; }
+</style></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Edge positions</h1>
+<h2>Inside a scrolling box</h2>
+<div class="scroller">
+  <form><label>Username <input autocomplete="username"></label>
+  <label>Password <input type="password"></label></form>
+</div>
+<h2>Narrow fields</h2>
+<form class="narrow"><label>User <input autocomplete="username"></label>
+<label>Pass <input type="password"></label></form>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>In the scroll box: scrolling with the dropdown open keeps it attached to the field,
+and it closes once the field scrolls out of view.</li>
+<li>Narrow fields: the dropdown is still at least 250px wide and doesn't run off the right edge.</li>
+<li>The bar fixed at the bottom: the dropdown opens <em>above</em> the field because there is no room below.</li>
+</ul>
+</div>
+<div style="height: 30rem"></div>
+<form class="bottom"><input placeholder="Username" autocomplete="username">
+<input type="password" placeholder="Password"><button type="button">Go</button></form>
+</body>
+</html>

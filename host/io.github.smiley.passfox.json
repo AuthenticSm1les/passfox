@@ -1,0 +1,7 @@
+{
+  "name": "io.github.smiley.passfox",
+  "description": "passfox: fill Firefox logins from pass",
+  "path": "@HOST_PATH@",
+  "type": "stdio",
+  "allowed_extensions": ["passfox@smiley"]
+}

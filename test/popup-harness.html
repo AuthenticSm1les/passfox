@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Passwords</title>
+    <link rel="stylesheet" href="../extension/vendor/firefox/tokens-shared.css" />
+    <link rel="stylesheet" href="../extension/vendor/firefox/tokens-platform.css" />
+    <link rel="stylesheet" href="../extension/shared/firefox.css" />
+    <link rel="stylesheet" href="../extension/popup/popup.css" />
+  </head>
+  <body>
+    <main class="panelview">
+      <header class="panel-header"><h1>Passwords</h1></header>
+      <div class="separator"></div>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search Passwords" autocomplete="off" spellcheck="false" />
+      </div>
+      <div id="list" class="panel-subview-body" role="listbox" aria-label="Passwords"></div>
+      <p id="message" class="message" hidden></p>
+      <footer id="footer">
+        <div class="separator"></div>
+        <div class="panel-subview-body">
+          <button id="manage" class="subviewbutton">Manage Passwords</button>
+        </div>
+      </footer>
+    </main>
+    <script>
+      // Fake extension API for rendering the toolbar popup outside Firefox.
+      window.close = () => (document.title = "closed");
+      window.browser = {
+        runtime: { async sendMessage(msg) {
+          if (msg.type == "logins") return { result: [
+            { path: "www/github.com/alice", domain: "github.com", username: "alice", exact: true },
+            { path: "www/github.com/work", domain: "github.com", username: "alice@work.example", exact: true },
+            { path: "www/gist.github.com/bob", domain: "gist.github.com", username: "bob", exact: false } ] };
+          // Open with #pending to see the doorhanger mode.
+          if (msg.type == "pending") return { result: location.hash == "#pending" ? {
+            mode: "save", host: "github.com", username: "carol", password: "hunter22",
+            usernameSuggestions: ["carol", "alice", "alice@work.example"] } : null };
+          window.harnessLast = msg;
+          return { result: { ok: true } };
+        } },
+        tabs: { query: async () => [{ id: 1 }] },
+        storage: { session: { get: async () => ({}), remove: async () => {} } },
+      };
+    </script>
+    <script src="../extension/shared/icons.js"></script>
+    <script src="../extension/content/ui.js"></script>
+    <script src="../extension/shared/doorhanger.js"></script>
+    <script src="../extension/popup/popup.js"></script>
+  </body>
+</html>

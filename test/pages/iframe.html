@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Login in an iframe</title><link rel="stylesheet" href="site.css"></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Login in an iframe</h1>
+<p>The form below comes from <code>auth.localhost</code>, a different site
+from this page. Its logins are the ones under <code>www/auth.localhost/</code>.</p>
+<iframe id="frame" title="Sign-in frame" style="width: 100%; height: 22rem; border: 1px solid GrayText; border-radius: 8px"></iframe>
+<script>
+  document.getElementById("frame").src = `http://auth.localhost:${location.port}/frame-login.html`;
+</script>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>The dropdown opens inside the frame and offers only <code>auth.localhost</code> logins, never the <code>localhost</code> ones.</li>
+<li>Submitting a new login shows the doorhanger in the top page, naming <code>auth.localhost</code>.</li>
+</ul>
+</div>
+</body>
+</html>
