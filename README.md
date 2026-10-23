@@ -39,8 +39,10 @@ passfox has two parts: the Firefox add-on, and a small native host that runs
    [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/passfox/).
    (Each [release](https://github.com/AuthenticSm1les/passfox/releases) also
    carries the Mozilla-signed `.xpi`.)
-2. **Native host:** from a clone of this repository (or the
-   `passfox-host-<version>.tar.gz` release file), run:
+2. **Native host:** on Arch Linux, install
+   [`passfox-host`](https://aur.archlinux.org/packages/passfox-host) from the
+   AUR (it installs the host system-wide). Elsewhere, from a clone of this
+   repository (or the `passfox-host-<version>.tar.gz` release file), run:
 
    ```sh
    ./install.sh
