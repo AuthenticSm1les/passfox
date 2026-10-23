@@ -28,14 +28,17 @@ the look and behaviour of Firefox's built-in password manager.
 
 ## Layout of your store
 
-Entries are matched to sites by the first path part that looks like a hostname,
-and the rest of the path is the username: `www/github.com/alice` → site
-`github.com`, user `alice`. A `login:`, `username:`, `user:` or `email:` line in
-the entry overrides the username. Subdomains match their base domain
-(`gist.github.com` ↔ `github.com`), with exact-host matches listed first.
-Top-level `otp/` and `fido2/` are never offered for sites (change this with
-`PASSFOX_NON_LOGIN_DIRS`, colon-separated). New logins are saved as
+passfox only works with website logins kept as `www/<domain>/<username>`:
+`www/github.com/alice` is user `alice` on `github.com`. A `login:`,
+`username:`, `user:` or `email:` line in the entry overrides the username.
+Subdomains match their base domain (`gist.github.com` ↔ `github.com`), with
+exact-host matches listed first. New logins are saved as
 `www/<host>/<username>`.
+
+Everything outside `www/` (tokens, TOTP seeds, keys) is left alone: passfox
+never lists, decrypts, copies or writes it. To use other or more folders, set
+`PASSFOX_LOGIN_DIRS` (colon-separated, default `www`) in the environment
+Firefox starts with.
 
 ## Install
 

@@ -18,7 +18,10 @@ USERNAME_KEYS = ("login", "username", "user", "email")
 URL_KEYS = ("url", "website", "site")
 # Top-level folders that hold secrets other than site logins (TOTP seeds,
 # FIDO2 keys); they are listed but never offered for a website.
-NON_LOGIN_DIRS = set(filter(None, os.environ.get("PASSFOX_NON_LOGIN_DIRS", "otp:fido2").split(":")))
+# Top-level folders holding website logins, as www/<domain>/<username>.
+# Nothing outside them is listed, read or written: other folders hold
+# secrets that aren't website passwords (tokens, TOTP seeds, keys).
+LOGIN_DIRS = set(filter(None, os.environ.get("PASSFOX_LOGIN_DIRS", "www").split(":")))
 # Entries made by "Use a Securely Generated Password" before a username is
 # known; they count as having no username until adopted.
 GENERATED_PREFIX = "passfox-generated-"
@@ -46,6 +49,8 @@ def check_path(path, must_exist=True):
     parts = path.split("/")
     if any(p in ("", ".", "..") or p.startswith("-") for p in parts):
         raise ValueError("invalid entry path")
+    if len(parts) < 2 or parts[0] not in LOGIN_DIRS:
+        raise ValueError("not a login entry (outside " + ", ".join(sorted(LOGIN_DIRS)) + ")")
     full = os.path.realpath(os.path.join(STORE, path + ".gpg"))
     if not full.startswith(STORE + os.sep):
         raise ValueError("entry outside password store")
@@ -57,15 +62,11 @@ def check_path(path, must_exist=True):
 def describe(path):
     """Map an entry path onto Firefox's site + username model."""
     parts = path.split("/")
-    domain, username = None, ""
-    if parts[0] in NON_LOGIN_DIRS:
-        return {"path": path, "domain": None, "username": ""}
-    for i, part in enumerate(parts):
-        if HOSTNAME_RE.match(part):
-            domain = part.lower()
-            rest = parts[i + 1:]
-            username = "/".join(rest)
-            break
+    if HOSTNAME_RE.match(parts[1]):
+        domain, username = parts[1].lower(), "/".join(parts[2:])
+    else:
+        # A login whose folder isn't a hostname: listed, never matched.
+        domain, username = None, parts[-1]
     if parts[-1].startswith(GENERATED_PREFIX):
         username = ""
     return {"path": path, "domain": domain, "username": username}
@@ -73,7 +74,14 @@ def describe(path):
 
 def cmd_list(_msg):
     entries = []
-    for root, dirs, files in os.walk(STORE, followlinks=True):
+    for top in sorted(LOGIN_DIRS):
+        entries += list_dir(os.path.join(STORE, top))
+    return {"entries": entries}
+
+
+def list_dir(top):
+    entries = []
+    for root, dirs, files in os.walk(top, followlinks=True):
         dirs[:] = sorted(d for d in dirs if not d.startswith("."))
         for name in sorted(files):
             if name.endswith(".gpg"):
@@ -83,7 +91,7 @@ def cmd_list(_msg):
                 # Stands in for Firefox's timePasswordChanged.
                 entry["modified"] = int(os.path.getmtime(full) * 1000)
                 entries.append(entry)
-    return {"entries": entries}
+    return entries
 
 
 def run_pass(args, stdin=None):
