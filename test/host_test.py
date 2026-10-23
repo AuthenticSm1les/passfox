@@ -47,6 +47,9 @@ def main():
         )
         subprocess.run(["pass", "init", "passfox-test@example.invalid"], env=env, check=True, capture_output=True)
 
+        def raw(path):
+            return subprocess.run(["pass", "show", path], env=env, check=True, capture_output=True, text=True).stdout
+
         def insert(path, body):
             subprocess.run(["pass", "insert", "-m", path], input=body.encode(), env=env, check=True, capture_output=True)
 
@@ -90,11 +93,13 @@ def main():
         assert "error" in ask(env, {"action": "insert", "path": "www/x/y", "username": "a", "password": "a\nb"})
 
         # Generate with pass's own settings, then adopt into a new login...
-        gen = ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
+        gen = ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1", "url": "https://new.test"})
+        assert raw("www/new.test/passfox-generated-1") == gen["password"] + "\nurl: https://new.test\n"
         assert len(gen["password"]) == 21 and gen["entry"]["username"] == "", gen
         assert "error" in ask(env, {"action": "generate", "path": "www/new.test/passfox-generated-1"})
         assert "error" in ask(env, {"action": "generate", "path": "www/new.test/erin"})
-        assert ask(env, {"action": "adopt", "from": "www/new.test/passfox-generated-1", "to": "www/new.test/erin", "username": "erin"})["ok"]
+        assert ask(env, {"action": "adopt", "from": "www/new.test/passfox-generated-1", "to": "www/new.test/erin", "username": "erin", "url": "https://new.test"})["ok"]
+        assert raw("www/new.test/erin") == gen["password"] + "\nurl: https://new.test\nlogin: erin\n", raw("www/new.test/erin")
         assert ask(env, {"action": "get", "path": "www/new.test/erin"})["password"] == gen["password"]
         assert "error" in ask(env, {"action": "get", "path": "www/new.test/passfox-generated-1"})
         # ...and into an existing one, keeping its other lines.
@@ -106,6 +111,15 @@ def main():
         # Only generated entries can be adopted (i.e. renamed or removed).
         assert "error" in ask(env, {"action": "adopt", "from": "www/github.com/work", "to": "www/github.com/x", "username": "x"})
         assert "error" in ask(env, {"action": "bogus"})
+
+        # Saving writes login: and url: lines; updating keeps the entry's
+        # lines and only adds the ones it lacks (under any alias).
+        assert ask(env, {"action": "insert", "path": "www/site.test/zoe", "username": "zoe", "password": "p1", "url": "https://site.test"})["ok"]
+        assert raw("www/site.test/zoe") == "p1\nlogin: zoe\nurl: https://site.test\n", raw("www/site.test/zoe")
+        insert("www/site.test/yan", "old\nemail: yan@site.test\nnote: keep me\n")
+        assert ask(env, {"action": "insert", "path": "www/site.test/yan", "username": "yan", "password": "p2", "url": "https://site.test"})["ok"]
+        assert raw("www/site.test/yan") == "p2\nemail: yan@site.test\nnote: keep me\nurl: https://site.test\n", raw("www/site.test/yan")
+        assert "error" in ask(env, {"action": "insert", "path": "www/site.test/x", "username": "x", "password": "p", "url": "javascript:alert(1)"})
         # Copying goes through pass -c (no display here, so pass's own error).
         assert "display" in ask(env, {"action": "clip", "path": "www/github.com/alice"}).get("error", "").lower()
 

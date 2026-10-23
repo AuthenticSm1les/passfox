@@ -44,6 +44,11 @@ function baseDomain(host) {
   return labels.slice(-take).join(".");
 }
 
+/** What Firefox stores as a login's site: scheme://host[:port]. */
+function originOf(url) {
+  return new URL(url).origin;
+}
+
 function hostOf(url) {
   try {
     const parsed = new URL(url);
@@ -147,6 +152,7 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
         path: existing?.path ?? savePathFor(host, username),
         username,
         host,
+        url: originOf(sender.url),
         password,
         usernameSuggestions: [],
         at: Date.now(),
@@ -172,7 +178,7 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
   const usernameSuggestions = [
     ...new Set([...possibleUsernames, ...logins.map(e => e.username)].filter(Boolean)),
   ];
-  Object.assign(pending, { host, password, usernameSuggestions, at: Date.now() });
+  Object.assign(pending, { host, url: originOf(sender.url), password, usernameSuggestions, at: Date.now() });
   await presentPending(sender.tab, pending);
 }
 
@@ -207,12 +213,12 @@ async function onPendingDone(sender, { action, username, password, tabId: pageTa
     await browser.storage.local.set({ neverSave: [...new Set([...hosts, pending.host])] });
   } else if (pending.from && (action == "update" || action == "add-username" || action == "save")) {
     const path = username === pending.username ? pending.path : savePathFor(pending.host, username);
-    await native({ action: "adopt", from: pending.from, to: path, username });
+    await native({ action: "adopt", from: pending.from, to: path, username, url: pending.url });
     listCache = null;
   } else if (action == "save" || action == "update") {
     const path =
       action == "update" && pending.path ? pending.path : savePathFor(pending.host, username);
-    await native({ action: "insert", path, username, password });
+    await native({ action: "insert", path, username, password, url: pending.url });
     listCache = null;
   }
   return { ok: true };
@@ -289,7 +295,11 @@ const handlers = {
       throw new Error("Not a website");
     }
     const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
-    const result = await native({ action: "generate", path: `www/${host}/${GENERATED_PREFIX}${stamp}` });
+    const result = await native({
+      action: "generate",
+      path: `www/${host}/${GENERATED_PREFIX}${stamp}`,
+      url: originOf(sender.url),
+    });
     listCache = null;
     return { path: result.entry.path, username: "", password: result.password };
   },

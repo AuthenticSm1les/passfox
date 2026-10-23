@@ -132,22 +132,39 @@ def cmd_get(msg):
     return entry
 
 
+def has_field(lines, keys):
+    return any(line.partition(":")[0].strip().lower() in keys for line in lines if ":" in line)
+
+
+def entry_body(password, old_lines, username, url):
+    """The password, then the entry's other lines as they were, plus a
+    login: and url: line when it doesn't have one (under any alias) yet."""
+    lines = list(old_lines)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if username and not has_field(lines, USERNAME_KEYS):
+        lines.append(f"login: {username}")
+    if url and not has_field(lines, URL_KEYS):
+        lines.append(f"url: {url}")
+    return "\n".join([password, *lines]) + "\n"
+
+
 def cmd_insert(msg):
     path = check_path(msg.get("path"), must_exist=False)
     password = msg.get("password") or ""
     username = msg.get("username") or ""
-    if not password or "\n" in password or "\n" in username:
-        raise ValueError("invalid password or username")
-    full = os.path.join(STORE, path + ".gpg")
-    if os.path.isfile(full):
-        # Updating: keep every line after the password as it was.
-        old = run_pass(["show", "--", path]).split("\n")
-        body = "\n".join([password, *old[1:]])
-    else:
-        body = password + "\n"
-        if username and username != describe(path)["username"]:
-            body += f"login: {username}\n"
-    run_pass(["insert", "--multiline", "--force", "--", path], stdin=body)
+    url = msg.get("url") or ""
+    if not password or any("\n" in v or "\r" in v for v in (password, username, url)):
+        raise ValueError("invalid password, username or url")
+    if url and not re.match(r"^https?://[^\s/]+$", url):
+        raise ValueError("url must be a site origin")
+    old_lines = []
+    if os.path.isfile(os.path.join(STORE, path + ".gpg")):
+        old_lines = run_pass(["show", "--", path]).split("\n")[1:]
+    run_pass(
+        ["insert", "--multiline", "--force", "--", path],
+        stdin=entry_body(password, old_lines, username, url),
+    )
     return {"ok": True, "entry": describe(path)}
 
 
@@ -159,7 +176,11 @@ def cmd_generate(msg):
         raise ValueError("entry already exists")
     # Length and character set come from the user's pass settings.
     run_pass(["generate", "--", path])
-    return {"entry": describe(path), **cmd_get({"path": path})}
+    entry = cmd_get({"path": path})
+    if msg.get("url"):
+        cmd_insert({"path": path, "password": entry["password"], "url": msg["url"]})
+        entry["url"] = msg["url"]
+    return {"entry": describe(path), **entry}
 
 
 def cmd_clip(msg):
@@ -178,11 +199,13 @@ def cmd_adopt(msg):
         raise ValueError("only generated entries can be adopted")
     target = check_path(msg.get("to"), must_exist=False)
     password = parse_entry(run_pass(["show", "--", source]))["password"]
+    fields = {"password": password, "username": msg.get("username"), "url": msg.get("url")}
     if os.path.isfile(os.path.join(STORE, target + ".gpg")):
-        cmd_insert({"path": target, "password": password, "username": msg.get("username")})
+        cmd_insert({"path": target, **fields})
         run_pass(["rm", "--force", "--", source])
     else:
         run_pass(["mv", "--", source, target])
+        cmd_insert({"path": target, **fields})
     return {"ok": True, "entry": describe(target)}
 
 

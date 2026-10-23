@@ -36,7 +36,11 @@ passfox only works with website logins kept as `www/<domain>/<username>`:
 `username:`, `user:` or `email:` line in the entry overrides the username.
 Subdomains match their base domain (`gist.github.com` ↔ `github.com`), with
 exact-host matches listed first. New logins are saved as
-`www/<host>/<username>`.
+`www/<host>/<username>` with the password on the first line followed by
+`login: <username>` and `url: <site origin>` (e.g. `url: https://github.com`).
+Updates keep every line of the entry and only add a `login:` or `url:` line
+if it has none yet (`user:`, `username:`, `email:`, `website:` and `site:`
+count too).
 
 Everything outside `www/` (tokens, TOTP seeds, keys) is left alone: passfox
 never lists, decrypts, copies or writes it. To use other or more folders, set
