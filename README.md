@@ -97,7 +97,7 @@ Then, for each release, bump `version` in `extension/manifest.json`, commit,
 and push a matching tag:
 
 ```sh
-git tag v0.3.1 && git push origin v0.3.1
+git tag v0.4.0 && git push origin v0.4.0
 ```
 
 The AUR package
