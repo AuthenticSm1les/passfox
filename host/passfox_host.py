@@ -31,9 +31,9 @@ LAYOUT = None
 
 
 def compile_layout(layout):
-    """Turn a name pattern like "{site}/{username}" into a matcher with
-    "site" and (optionally) "username" groups."""
-    layout = (layout or DEFAULT_LAYOUT).strip("/")
+    """Turn a name pattern like "{url}/{username}" into a matcher with
+    "site" and (optionally) "username" groups ({site} is the same as {url})."""
+    layout = (layout or DEFAULT_LAYOUT).strip("/").replace("{url}", "{site}")
     pieces = re.split(r"(\{[a-z]+\})", layout)
     placeholders = [p for p in pieces if p.startswith("{")]
     if (
@@ -42,7 +42,7 @@ def compile_layout(layout):
         or set(placeholders) - {"{site}", "{username}"}
         or any(part in ("", ".", "..") or part.startswith("-") for part in layout.split("/"))
     ):
-        raise ValueError("invalid name pattern: use {site} once and {username} at most once")
+        raise ValueError("invalid name pattern: use {url} once and {username} at most once")
     # A trailing "/{username}" is optional, so an entry named just after the
     # site (with a login: line inside) still counts as that site's login.
     optional_username = layout.endswith("/{username}")

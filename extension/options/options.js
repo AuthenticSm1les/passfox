@@ -6,26 +6,26 @@ const exceptions = document.getElementById("exceptions");
 const showExceptions = document.getElementById("show-exceptions");
 const list = document.getElementById("exception-list");
 const removeAll = document.getElementById("remove-all");
-const loginDir = document.getElementById("login-dir");
-const loginDirError = document.getElementById("login-dir-error");
-const loginLayout = document.getElementById("login-layout");
-const loginLayoutError = document.getElementById("login-layout-error");
-const DEFAULT_LAYOUT = "{site}/{username}";
+const loginPattern = document.getElementById("login-pattern");
+const loginPatternError = document.getElementById("login-pattern-error");
+const DEFAULT_PATTERN = "{url}/{username}";
 
 async function load() {
   const settings = await browser.storage.local.get({
     askToSave: true,
     suggestPasswords: true,
     neverSave: [],
+    loginPattern: "",
     loginDir: "",
-    loginLayout: DEFAULT_LAYOUT,
+    loginLayout: "",
   });
   askToSave.checked = settings.askToSave;
-  if (document.activeElement != loginDir) {
-    loginDir.value = settings.loginDir;
-  }
-  if (document.activeElement != loginLayout) {
-    loginLayout.value = settings.loginLayout;
+  if (document.activeElement != loginPattern) {
+    // Earlier builds stored the folder and the name separately.
+    loginPattern.value =
+      settings.loginPattern ||
+      [settings.loginDir, settings.loginLayout || (settings.loginDir ? DEFAULT_PATTERN : "")].filter(Boolean).join("/") ||
+      DEFAULT_PATTERN;
   }
   suggest.checked = settings.suggestPasswords;
   renderExceptions(settings.neverSave);
@@ -60,23 +60,6 @@ showExceptions.addEventListener("click", () => {
 });
 removeAll.addEventListener("click", () => browser.storage.local.set({ neverSave: [] }));
 
-// A folder inside the password store: no "..", no leading "-" (pass would
-// read it as an option); surrounding slashes are dropped.
-loginDir.addEventListener("change", () => {
-  const value = loginDir.value.trim().replace(/^\/+|\/+$/g, "");
-  const parts = value ? value.split("/") : [];
-  const bad = parts.some(part => !part || part == "." || part == ".." || part.startsWith("-"));
-  loginDirError.hidden = !bad;
-  loginDirError.textContent = bad ? "Use a folder inside your password store, like “www”." : "";
-  if (!bad) {
-    loginDir.value = value;
-    browser.storage.local.set({ loginDir: value });
-  }
-});
-document.getElementById("manage").addEventListener("click", () =>
-  browser.runtime.sendMessage({ type: "openManager" })
-);
-
 // Stay in step with "Never save" choices made while this page is open.
 browser.storage.onChanged.addListener((changes, area) => {
   if (area == "local") {
@@ -86,30 +69,31 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 load();
 
-// Same rules as the native host: {site} once, {username} at most once, no
-// other placeholders, and every part a plain name inside the folder.
-function layoutProblem(value) {
+// Same rules as the native host: {url} (or {site}) once, {username} at most
+// once, no other placeholders, and every part a plain name in the store.
+function patternProblem(value) {
   const placeholders = value.match(/\{[^}]*\}/g) ?? [];
-  const count = name => placeholders.filter(p => p == name).length;
-  if (count("{site}") != 1) {
-    return "Include {site} once.";
+  const count = (...names) => placeholders.filter(p => names.includes(p)).length;
+  if (count("{url}", "{site}") != 1) {
+    return "Include {url} once.";
   }
-  if (count("{username}") > 1 || placeholders.some(p => p != "{site}" && p != "{username}")) {
-    return "Only {site} and {username} can be used, each once.";
+  if (count("{username}") > 1 || placeholders.some(p => !["{url}", "{site}", "{username}"].includes(p))) {
+    return "Only {url} and {username} can be used, each once.";
   }
   if (value.split("/").some(part => !part || part == "." || part == ".." || part.startsWith("-"))) {
-    return "Use names inside the folder, like {site}/{username}.";
+    return "Use names inside your password store, like www/{url}/{username}.";
   }
   return null;
 }
 
-loginLayout.addEventListener("change", () => {
-  const value = loginLayout.value.trim().replace(/^\/+|\/+$/g, "") || DEFAULT_LAYOUT;
-  const problem = layoutProblem(value);
-  loginLayoutError.hidden = !problem;
-  loginLayoutError.textContent = problem ?? "";
+loginPattern.addEventListener("change", () => {
+  const value = loginPattern.value.trim().replace(/^\/+|\/+$/g, "") || DEFAULT_PATTERN;
+  const problem = patternProblem(value);
+  loginPatternError.hidden = !problem;
+  loginPatternError.textContent = problem ?? "";
   if (!problem) {
-    loginLayout.value = value;
-    browser.storage.local.set({ loginLayout: value });
+    loginPattern.value = value;
+    browser.storage.local.set({ loginPattern: value });
+    browser.storage.local.remove?.(["loginDir", "loginLayout"]);
   }
 });

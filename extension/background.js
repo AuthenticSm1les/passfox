@@ -15,24 +15,37 @@ const MULTI_LABEL_SUFFIXES = new Set([
 let listCache = null;
 let cssCache = null;
 
-// The folder holding website logins, from passfox's preferences ("" is the
-// password store root). Every native request carries it, and the host keeps
-// to it: nothing outside is listed, read or written.
-// The name pattern for login entries inside it ({site} and {username}).
-const DEFAULT_LAYOUT = "{site}/{username}";
+// Where logins are stored, from passfox's preferences: one pattern from the
+// store root with {url} (or {site}) and {username}, e.g. www/{url}/{username}.
+// Its plain folders before the first placeholder are the login folder: every
+// native request carries it, and the host lists, reads and writes nothing
+// outside it. The rest is how each login is named.
+const DEFAULT_PATTERN = "{url}/{username}";
 let loginDir = "";
-let loginLayout = DEFAULT_LAYOUT;
+let loginLayout = DEFAULT_PATTERN;
+
+function applyPattern(pattern) {
+  const parts = (pattern || DEFAULT_PATTERN).split("/");
+  const first = parts.findIndex(part => part.includes("{"));
+  loginDir = parts.slice(0, first).join("/");
+  loginLayout = parts.slice(first).join("/");
+  listCache = null;
+}
+
+// Earlier builds stored the folder and the name separately.
+function patternFrom({ loginPattern, loginDir: dir, loginLayout: layout }) {
+  if (loginPattern) {
+    return loginPattern;
+  }
+  return dir || layout ? [dir, layout || DEFAULT_PATTERN].filter(Boolean).join("/") : DEFAULT_PATTERN;
+}
+
 const settingsReady = browser.storage.local
-  .get({ loginDir: "", loginLayout: DEFAULT_LAYOUT })
-  .then(settings => {
-    loginDir = settings.loginDir ?? "";
-    loginLayout = settings.loginLayout || DEFAULT_LAYOUT;
-  });
+  .get(["loginPattern", "loginDir", "loginLayout"])
+  .then(settings => applyPattern(patternFrom(settings)));
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area == "local" && (changes.loginDir || changes.loginLayout)) {
-    loginDir = changes.loginDir ? changes.loginDir.newValue ?? "" : loginDir;
-    loginLayout = changes.loginLayout ? changes.loginLayout.newValue || DEFAULT_LAYOUT : loginLayout;
-    listCache = null;
+  if (area == "local" && changes.loginPattern) {
+    applyPattern(changes.loginPattern.newValue);
   }
 });
 
@@ -174,7 +187,7 @@ function isGeneratedPath(path) {
 /** The entry for a login, named by the pattern from passfox's preferences. */
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
-  return inLoginDir(loginLayout.replace("{site}", host).replace("{username}", name));
+  return inLoginDir(loginLayout.replace(/\{(url|site)\}/, host).replace("{username}", name));
 }
 
 function generatedPathFor(host) {

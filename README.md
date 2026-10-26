@@ -24,7 +24,8 @@ only connects it to Firefox.
 
 - Firefox 142 or newer, on Linux or another unix-like system
 - [pass](https://www.passwordstore.org/) with one entry per login, named
-  after the website (see [Your store](#your-store))
+  after the website, such as `www/example.com/alex@email.com` (see
+  [Your store](#your-store))
 - Python 3
 - To copy passwords: `wl-copy` (Wayland) or `xclip` (X11), the same tools
   pass uses for `pass show -c`
@@ -128,26 +129,21 @@ favicon history.
 ## Your store
 
 passfox reads website logins as one entry per login, named after the
-website. Two [preferences](#settings) say where they are and how they're
-named:
-
-- **Folder with website logins**: empty (the default) for the top of your
-  store, or a folder such as `www`.
-- **Name of each login**: a pattern with `{site}` and `{username}`, by default
-  `{site}/{username}`.
+website. The **Where logins are stored** [preference](#settings) is a pattern
+from the top of your store, with `{url}` for the website and `{username}` for
+the username (default `{url}/{username}`):
 
 ```
-{site}/{username}     github.com/alice        → user alice on github.com
-{username}@{site}     alice@github.com        → user alice on github.com
-{site}                github.com              → github.com, username from its login: line
-
-folder www, {site}/{username}:
-                      www/github.com/alice    → user alice on github.com
+{url}/{username}        example.com/alex@email.com
+www/{url}/{username}    www/example.com/alex@email.com
+{username}@{url}        alex@email.com@example.com
+www/{url}               www/example.com   (one login per website; username from its login: line)
 ```
 
-With `{site}/{username}`, an entry named just after the site (`github.com`)
-counts too, with the username from its `login:` line. New logins are saved
-with the same pattern.
+New logins are saved with the same pattern. With `{url}/{username}`, an entry
+named just after the website (`example.com`) counts too, with the username
+from its `login:` line. Folders before `{url}`, like `www`, are where passfox
+works.
 
 Logins for a site's subdomains are offered too, for example
 `gist.github.com` logins on `github.com`. If an entry has a `login:`,
@@ -164,11 +160,11 @@ url: https://github.com
 When passfox updates an entry, only the password line changes; every other
 line is kept.
 
-**With a login folder set, everything outside it is left alone.** Tokens,
-TOTP seeds, keys and notes elsewhere in your store are never shown, decrypted,
-copied or changed by passfox. Without one, the whole store is passfox's to
-read, so entries whose first folder isn't a website show up in the passwords
-page too (they're never offered on a site).
+**With folders before `{url}` (like `www/{url}/{username}`), everything
+outside them is left alone.** Tokens, TOTP seeds, keys and notes elsewhere in
+your store are never shown, decrypted, copied or changed by passfox. Without
+one, the whole store is passfox's to read, so entries that don't fit the
+pattern show up on the passwords page too (they're never offered on a site).
 
 ## Settings
 
@@ -180,8 +176,8 @@ password settings:
   *Never save* on,
 - **Suggest strong passwords** on sign-up and change-password forms,
 - **Manage saved passwords**, which opens the passwords page,
-- **Folder with website logins** in your store and the **Name of each login**
-  (see [Your store](#your-store)).
+- **Where logins are stored**: the pattern for login entries in your store,
+  such as `www/{url}/{username}` (see [Your store](#your-store)).
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and
@@ -200,8 +196,8 @@ travel between Firefox and the helper on your computer.
 
 **No dropdown appears.** Check that the helper is installed: the passfox
 toolbar panel says *Can't reach pass* when it isn't. Also check that the
-site's logins are stored as `<website>/<username>` inside the folder set in
-passfox's preferences.
+site's logins are named the way **Where logins are stored** in passfox's
+preferences says.
 
 **The save prompt hangs from the puzzle piece.** Pin passfox to the toolbar
 (see [Install](#install)).

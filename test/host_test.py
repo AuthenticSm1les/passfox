@@ -106,7 +106,10 @@ def main():
         assert gen["entry"]["domain"] is None and gen["entry"]["username"] == "", gen
         assert ask(env, {"action": "adopt", "from": "sites/passfox-generated/example.com/1", "to": "sites/example.com", "username": "erin", "url": "https://example.com"}, dir="sites", layout="{site}")["ok"]
         assert raw("sites/example.com") == gen["password"] + "\nurl: https://example.com\nlogin: erin\n", raw("sites/example.com")
-        for bad in ("{username}", "{site}/{site}", "{site}/{user}", "../{site}", "{site}/{username}/{username}"):
+        # {url} is the same placeholder as {site}.
+        url_named = ask(env, {"action": "list"}, dir="names", layout="{username}@{url}")["entries"]
+        assert ("example.org", "bob") in [(e["domain"], e["username"]) for e in url_named], url_named
+        for bad in ("{username}", "{site}/{site}", "{url}/{site}", "{site}/{user}", "../{site}", "{site}/{username}/{username}"):
             assert "error" in ask(env, {"action": "list"}, layout=bad), bad
 
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})

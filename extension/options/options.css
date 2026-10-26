@@ -75,9 +75,6 @@ h2.section {
 .setting.folder {
   justify-content: flex-start;
 
-  > label {
-    min-width: 12em;
-  }
 
   input {
     flex: 1;

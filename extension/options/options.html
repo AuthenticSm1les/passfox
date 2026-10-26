@@ -33,32 +33,27 @@
 
     <h2 class="section">Password store</h2>
     <div class="setting folder">
-      <label for="login-dir">Folder with website logins</label>
-      <input type="text" id="login-dir" placeholder="Password store root" spellcheck="false" autocomplete="off" aria-describedby="login-dir-help login-dir-error" />
+      <label for="login-pattern">Where logins are stored</label>
+      <input type="text" id="login-pattern" placeholder="{url}/{username}" spellcheck="false" autocomplete="off" aria-describedby="login-pattern-help login-pattern-error" />
     </div>
-    <p id="login-dir-help" class="description">
-      passfox reads and saves logins inside this folder (for example
-      <code>www</code> for <code>www/github.com/alice</code>). Entries elsewhere
-      in your store are left alone. Leave it empty to use the whole store.
-    </p>
-    <p id="login-dir-error" class="error" hidden></p>
-
-    <div class="setting folder">
-      <label for="login-layout">Name of each login</label>
-      <input type="text" id="login-layout" placeholder="{site}/{username}" spellcheck="false" autocomplete="off" aria-describedby="login-layout-help login-layout-error" />
-    </div>
-    <div id="login-layout-help" class="description">
+    <div id="login-pattern-help" class="description">
       <p>
-        How login entries are named inside that folder, with <code>{site}</code>
-        for the website and <code>{username}</code> for the username:
+        Each login is one entry in your password store, named with this
+        pattern: <code>{url}</code> is the website and <code>{username}</code>
+        the username. For example:
       </p>
       <ul class="examples">
-        <li><code>{site}/{username}</code> → <code>github.com/alice</code></li>
-        <li><code>{username}@{site}</code> → <code>alice@github.com</code></li>
-        <li><code>{site}</code> → <code>github.com</code>, one login per website, with the username on its <code>login:</code> line</li>
+        <li><code>{url}/{username}</code> → <code>example.com/alex@email.com</code></li>
+        <li><code>www/{url}/{username}</code> → <code>www/example.com/alex@email.com</code></li>
+        <li><code>{username}@{url}</code> → <code>alex@email.com@example.com</code></li>
+        <li><code>www/{url}</code> → <code>www/example.com</code>, one login per website, with the username on its <code>login:</code> line</li>
       </ul>
+      <p>
+        Folders before <code>{url}</code> (like <code>www</code>) are where
+        passfox works: entries elsewhere in your store are left alone.
+      </p>
     </div>
-    <p id="login-layout-error" class="error" hidden></p>
+    <p id="login-pattern-error" class="error" hidden></p>
 
     <p class="description note">
       Firefox’s own “Ask to save passwords” is turned off while passfox is

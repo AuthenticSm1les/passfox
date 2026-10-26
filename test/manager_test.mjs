@@ -41,7 +41,8 @@ function sendNativeMessage(_name, message) {
 const ORIGIN = "moz-extension://test/";
 let listener;
 const lifecycle = [];
-// passfox's preferences: these tests use a www/ login folder until the end.
+// passfox's preferences: these tests start with the older pair of settings
+// (folder www, default name), which must carry over as www/{url}/{username}.
 let settings = { loginDir: "www" };
 const storageListeners = [];
 let passwordSaving = { value: true, levelOfControl: "controllable_by_this_extension" };
@@ -68,7 +69,7 @@ const browser = {
   storage: {
     session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
     local: {
-      get: async defaults => ({ ...(typeof defaults == "object" ? defaults : {}), ...settings }),
+      get: async keys => ({ ...(keys && !Array.isArray(keys) && typeof keys == "object" ? keys : {}), ...settings }),
       set: async items => {
         const changes = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, { oldValue: settings[k], newValue: v }]));
         settings = { ...settings, ...items };
@@ -146,7 +147,7 @@ try {
 
   // The default login folder is the store root: every entry is a login,
   // and new ones are saved at the top level.
-  await browser.storage.local.set({ loginDir: "" });
+  await browser.storage.local.set({ loginPattern: "{url}/{username}" });
   reply = await send("manager-list");
   assert.deepEqual(reply.result.map(e => e.path).sort(), ["misc/token", "www/github.com/alice2"]);
   reply = await send("manager-create", { origin: "https://root.test", username: "ann", password: "pw" });
@@ -154,14 +155,14 @@ try {
   assert.equal(run("pass", ["show", "root.test/ann"]), "pw\nlogin: ann\nurl: https://root.test\n");
 
   // Name patterns from the preferences: username@site...
-  await browser.storage.local.set({ loginDir: "named", loginLayout: "{username}@{site}" });
+  await browser.storage.local.set({ loginPattern: "named/{username}@{url}" });
   reply = await send("manager-create", { origin: "https://example.org", username: "bob", password: "pw-bob" });
   assert.equal(reply.result.path, "named/bob@example.org");
   reply = await send("manager-list");
   assert.deepEqual(reply.result.map(e => [e.path, e.domain, e.username]), [["named/bob@example.org", "example.org", "bob"]]);
 
   // ...and one entry per site, where a username change doesn't rename it.
-  await browser.storage.local.set({ loginDir: "sites", loginLayout: "{site}" });
+  await browser.storage.local.set({ loginPattern: "sites/{url}" });
   reply = await send("manager-create", { origin: "https://example.net", username: "dan", password: "pw-dan" });
   assert.equal(reply.result.path, "sites/example.net");
   reply = await send("manager-create", { origin: "https://example.net", username: "eve", password: "x" });
