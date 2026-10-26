@@ -220,6 +220,9 @@
     AboutLoginsDeleteLogin: event => remove(event.detail),
     AboutLoginsSortChanged: event => browser.storage.local.set({ loginsSort: event.detail }),
     AboutLoginsGetHelp: () => window.open(HELP_URL, "_blank"),
+    // Firefox's "Settings" opens its password settings; passfox's are its
+    // preferences in about:addons.
+    AboutLoginsOpenPreferences: () => browser.runtime.openOptionsPage(),
   };
   for (const [name, handler] of Object.entries(handlers)) {
     document.addEventListener(name, event => {

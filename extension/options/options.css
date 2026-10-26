@@ -1,0 +1,69 @@
+/* Spacing after Firefox's settings pages, on top of in-content/common.css. */
+
+body {
+  margin: 0;
+  padding: var(--space-large) var(--space-xlarge) var(--space-xlarge);
+  min-width: 0;
+}
+
+h2 {
+  margin-block: 0 var(--space-large);
+}
+
+.setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-small) var(--space-large);
+  min-height: var(--size-item-large);
+
+  &.nested {
+    margin-inline-start: var(--space-xlarge);
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-small);
+  }
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-small);
+}
+
+.description {
+  color: var(--text-color-deemphasized);
+}
+
+.note {
+  margin-block-start: var(--space-xlarge);
+}
+
+.exceptions {
+  margin: var(--space-small) 0 var(--space-medium) var(--space-xlarge);
+  padding: var(--space-medium) var(--space-large);
+  border: 1px solid var(--border-color-deemphasized);
+  border-radius: var(--border-radius-medium);
+
+  h3 {
+    margin: 0;
+    font-size: inherit;
+  }
+
+  ul {
+    margin: var(--space-small) 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-medium);
+    padding-block: var(--space-xsmall);
+  }
+}

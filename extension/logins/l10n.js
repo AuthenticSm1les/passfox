@@ -200,7 +200,7 @@
         const value = resolve(node.selector, args);
         const variant =
           node.variants.find(v => String(v.key) == String(value)) ??
-          (typeof value == "number" && node.variants.find(v => v.key == plural.select(value))) ??
+          (typeof value == "number" ? node.variants.find(v => v.key == plural.select(value)) : undefined) ??
           node.variants.find(v => v.isDefault);
         return format(variant.value, args);
       }

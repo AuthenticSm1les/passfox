@@ -132,7 +132,8 @@ def build_page():
         + html[first_module:]
     )
     # pass is the store: no importing, exporting or removing everything here.
-    for item in ("menuitem-import-file", "menuitem-export", "menuitem-remove-all-logins", "menuitem-preferences"):
+    # (Settings stays: it opens passfox's preferences in about:addons.)
+    for item in ("menuitem-import-file", "menuitem-export", "menuitem-remove-all-logins"):
         html = html.replace(f'class="menuitem-button {item} ghost-button"', f'class="menuitem-button {item} ghost-button" hidden')
     html = html.replace('<hr role="separator" class="menuitem-separator"></hr>', '<hr role="separator" class="menuitem-separator" hidden></hr>')
     out = EXT / "logins" / "logins.html"

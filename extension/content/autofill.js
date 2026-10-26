@@ -18,6 +18,15 @@
   let lastSubmit = { key: "", at: 0 };
   let popupDismissedFor = null;
 
+  // Settings: "Suggest strong passwords".
+  let suggestPasswords = true;
+  browser.storage.local.get({ suggestPasswords: true }).then(s => (suggestPasswords = s.suggestPasswords));
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area == "local" && changes.suggestPasswords) {
+      suggestPasswords = changes.suggestPasswords.newValue !== false;
+    }
+  });
+
   /* ::::: field detection ::::: */
 
   function isInput(node) {
@@ -320,7 +329,7 @@
     if (document.activeElement !== field) {
       return;
     }
-    const offerGenerated = isNewPasswordField(field) && !field.value;
+    const offerGenerated = suggestPasswords && isNewPasswordField(field) && !field.value;
     const matches = matchesFor(field);
     const showFooter = offerGenerated || !(isPasswordField(field) && field.value);
     if (!matches.length && !offerGenerated) {

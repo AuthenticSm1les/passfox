@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <title>passfox Settings</title>
+    <link rel="stylesheet" href="/vendor/firefox/chrome/global/skin/in-content/common.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <!-- Laid out like Firefox's Settings → Privacy & Security → Passwords. -->
+    <h2>Passwords</h2>
+
+    <div class="setting">
+      <label><input type="checkbox" id="ask-to-save" /> Ask to save passwords</label>
+      <div class="buttons">
+        <button id="show-exceptions" aria-expanded="false" aria-controls="exceptions">Exceptions…</button>
+        <button id="manage">Manage saved passwords</button>
+      </div>
+    </div>
+
+    <section id="exceptions" class="exceptions" hidden aria-labelledby="exceptions-title">
+      <h3 id="exceptions-title">Exceptions</h3>
+      <p class="description">passfox won't ask to save passwords for these websites.</p>
+      <ul id="exception-list"></ul>
+      <p id="no-exceptions" class="description" hidden>No websites yet. Choose “Never save” in a save prompt to add one.</p>
+      <button id="remove-all" disabled>Remove All Websites</button>
+    </section>
+
+    <div class="setting nested">
+      <label><input type="checkbox" id="suggest-passwords" /> Suggest strong passwords</label>
+    </div>
+
+    <p class="description note">
+      Firefox’s own “Ask to save passwords” is turned off while passfox is
+      installed, so you’re only asked once. Passwords are saved to pass, with
+      pass’s settings.
+    </p>
+
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -15,9 +15,20 @@
     { path: "www/Forum/dave", domain: null, username: "dave", modified: 1750000000000 },
   ];
   window.stubLog = [];
+  // storage.local, with Firefox's get(defaults) behaviour.
+  const local = { neverSave: ["forum.example.org", "shop.example.com"] };
+  const changeListeners = [];
+  const get = async keys => {
+    if (keys && typeof keys == "object" && !Array.isArray(keys)) {
+      return { ...keys, ...Object.fromEntries(Object.keys(keys).filter(k => k in local).map(k => [k, local[k]])) };
+    }
+    const names = keys == null ? Object.keys(local) : [].concat(keys);
+    return Object.fromEntries(names.filter(k => k in local).map(k => [k, local[k]]));
+  };
   window.browser = {
     runtime: {
       onMessage: { addListener() {} },
+      openOptionsPage: async () => stubLog.push({ type: "openOptionsPage" }),
       async sendMessage(msg) {
         stubLog.push(msg);
         switch (msg.type) {
@@ -37,7 +48,16 @@
       },
     },
     storage: {
-      local: { get: async () => ({}), set: async () => {} },
+      onChanged: { addListener: fn => changeListeners.push(fn) },
+      local: {
+        get,
+        async set(items) {
+          stubLog.push({ type: "storage.set", ...items });
+          const changes = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, { oldValue: local[k], newValue: v }]));
+          Object.assign(local, items);
+          changeListeners.forEach(fn => fn(changes, "local"));
+        },
+      },
       session: { get: async () => ({ managerSelect: new URL(location.href).searchParams.get("select") }), remove: async () => {} },
     },
   };

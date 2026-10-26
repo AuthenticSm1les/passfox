@@ -156,7 +156,16 @@ passfox.
 
 ## Settings
 
-passfox follows your pass configuration, such as `PASSWORD_STORE_DIR`,
+passfox's preferences are in `about:addons` (passfox → Preferences), or under
+**Preferences** in the passwords page's ⋯ menu, laid out like Firefox's own
+password settings:
+
+- **Ask to save passwords**, with **Exceptions…** for the sites you chose
+  *Never save* on,
+- **Suggest strong passwords** on sign-up and change-password forms,
+- **Manage saved passwords**, which opens the passwords page.
+
+passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and
 `PASSWORD_STORE_CLIP_TIME`, as long as they're set in the environment Firefox
 starts in.

@@ -65,5 +65,8 @@
     "48": "icons/login-dark.svg",
     "96": "icons/login-dark.svg"
   },
-  "homepage_url": "https://github.com/AuthenticSm1les/passfox"
+  "homepage_url": "https://github.com/AuthenticSm1les/passfox",
+  "options_ui": {
+    "page": "options/options.html"
+  }
 }

@@ -153,7 +153,9 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
   if (!host || !password || !sender.tab) {
     return;
   }
-  if ((await neverSaveHosts()).includes(host)) {
+  // Settings: "Ask to save passwords" and its exceptions.
+  const { askToSave = true } = await browser.storage.local.get("askToSave");
+  if (!askToSave || (await neverSaveHosts()).includes(host)) {
     return;
   }
   const logins = await loginsForUrl(sender.url);
