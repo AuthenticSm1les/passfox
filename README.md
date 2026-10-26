@@ -98,6 +98,9 @@ On sign-up and change-password forms, the password field's dropdown offers
 own pass length and character settings), fills the password and its
 confirmation field, and shows the new password while the field has focus.
 
+You can also right-click any password field and choose **Suggest Strong
+Password…** to get the same option there.
+
 The new password is saved right away, as Firefox does, without a username at
 first. After you submit the form, passfox asks
 **Add username to saved password?** so the entry gets the right name.

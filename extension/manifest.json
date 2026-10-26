@@ -18,7 +18,8 @@
     "nativeMessaging",
     "storage",
     "clipboardWrite",
-    "privacy"
+    "privacy",
+    "menus"
   ],
   "host_permissions": [
     "<all_urls>"

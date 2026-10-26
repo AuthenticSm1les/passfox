@@ -10,6 +10,8 @@
     return (window.passfoxShadow = attachShadow.call(this, { ...options, mode: "open" }));
   };
   const listeners = [];
+  // Lets a test deliver background messages, e.g. the context menu's.
+  window.stubSendToContent = msg => listeners.forEach(fn => fn(msg));
   const logins = [
     { path: "www/localhost/alice@example.com", domain: "localhost", username: "alice@example.com", exact: true, modified: 1790000000000 },
     { path: "www/localhost/bob", domain: "localhost", username: "bob", exact: true, modified: 1790000000000 },
@@ -17,6 +19,12 @@
     { path: "www/localhost/pin", domain: "localhost", username: "", exact: true, modified: 1770000000000 },
   ];
   window.browser = {
+    // A context-menu target id is the element's data-menu-target attribute.
+    menus: { getTargetElement: id => document.querySelector(`[data-menu-target="${id}"]`) },
+    storage: {
+      local: { get: async defaults => ({ ...(defaults && typeof defaults == "object" ? defaults : {}) }), set: async () => {} },
+      onChanged: { addListener() {} },
+    },
     runtime: {
       onMessage: { addListener: fn => listeners.push(fn) },
       async sendMessage(msg) {

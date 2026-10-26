@@ -162,6 +162,39 @@ async function takeOverPasswordSaving() {
 browser.runtime.onInstalled.addListener(() => takeOverPasswordSaving().catch(() => {}));
 browser.runtime.onStartup.addListener(() => takeOverPasswordSaving().catch(() => {}));
 
+/* ::::: "Suggest Strong Password…" in the password field context menu ::::: */
+
+// Like Firefox's item: it opens the field's dropdown with "Use a Securely
+// Generated Password", on any password field. Hidden while "Suggest strong
+// passwords" is off in the preferences.
+const SUGGEST_MENU = "passfox-suggest-password";
+
+async function createSuggestMenu() {
+  const { suggestPasswords = true } = await browser.storage.local.get("suggestPasswords");
+  await browser.menus.removeAll();
+  browser.menus.create({
+    id: SUGGEST_MENU,
+    title: "&Suggest Strong Password…",
+    contexts: ["password"],
+    visible: suggestPasswords,
+  });
+}
+
+browser.runtime.onInstalled.addListener(() => createSuggestMenu().catch(() => {}));
+browser.runtime.onStartup.addListener(() => createSuggestMenu().catch(() => {}));
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area == "local" && changes.suggestPasswords) {
+    browser.menus.update(SUGGEST_MENU, { visible: changes.suggestPasswords.newValue !== false }).catch(() => {});
+  }
+});
+browser.menus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId == SUGGEST_MENU && tab?.id != null) {
+    browser.tabs
+      .sendMessage(tab.id, { type: "suggest-password", targetElementId: info.targetElementId }, { frameId: info.frameId })
+      .catch(() => {});
+  }
+});
+
 /* ::::: save / update doorhanger state ::::: */
 
 function pendingKey(tabId) {

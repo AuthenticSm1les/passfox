@@ -324,12 +324,14 @@
     panel.style.left = `${Math.max(0, left)}px`;
   }
 
-  async function openPopup(field) {
+  // forceGenerated: from "Suggest Strong Password…", which offers a generated
+  // password on any password field.
+  async function openPopup(field, { forceGenerated = false } = {}) {
     await getLogins();
     if (document.activeElement !== field) {
       return;
     }
-    const offerGenerated = suggestPasswords && isNewPasswordField(field) && !field.value;
+    const offerGenerated = suggestPasswords && (forceGenerated || (isNewPasswordField(field) && !field.value));
     const matches = matchesFor(field);
     const showFooter = offerGenerated || !(isPasswordField(field) && field.value);
     if (!matches.length && !offerGenerated) {
@@ -483,6 +485,20 @@
 
   // Fill requests from the toolbar popup: use the focused login field, or the
   // first visible one on the page.
+  // "Suggest Strong Password…" from the context menu.
+  browser.runtime.onMessage.addListener(msg => {
+    if (msg?.type != "suggest-password") {
+      return undefined;
+    }
+    const field = browser.menus.getTargetElement(msg.targetElementId);
+    if (isPasswordField(field)) {
+      popupDismissedFor = null;
+      field.focus();
+      openPopup(field, { forceGenerated: true });
+    }
+    return undefined;
+  });
+
   browser.runtime.onMessage.addListener(msg => {
     if (msg?.type != "fill") {
       return undefined;

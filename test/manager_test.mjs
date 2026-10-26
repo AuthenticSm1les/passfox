@@ -45,6 +45,7 @@ const lifecycle = [];
 // (folder www, default name), which must carry over as www/{url}/{username}.
 let settings = { loginDir: "www" };
 const storageListeners = [];
+const menus = new Map();
 let passwordSaving = { value: true, levelOfControl: "controllable_by_this_extension" };
 const browser = {
   runtime: {
@@ -78,7 +79,13 @@ const browser = {
     },
     onChanged: { addListener: fn => storageListeners.push(fn) },
   },
-  tabs: { onRemoved: { addListener() {} } },
+  tabs: { onRemoved: { addListener() {} }, sendMessage: async () => {} },
+  menus: {
+    removeAll: async () => menus.clear(),
+    create: item => menus.set(item.id, { ...item }),
+    update: async (id, props) => Object.assign(menus.get(id), props),
+    onClicked: { addListener() {} },
+  },
   action: {},
 };
 vm.runInNewContext(readFileSync(join(root, "extension/background.js"), "utf8"), {
@@ -100,6 +107,14 @@ try {
   await Promise.all(lifecycle.map(fn => fn()));
   await new Promise(r => setTimeout(r, 0));
   assert.equal(passwordSaving.value, false);
+  // ...and adds "Suggest Strong Password…" to password fields' context menu,
+  // hidden while "Suggest strong passwords" is off.
+  const menu = menus.get("passfox-suggest-password");
+  assert.equal(JSON.stringify([menu.title, menu.contexts, menu.visible]), JSON.stringify(["&Suggest Strong Password…", ["password"], true]));
+  await browser.storage.local.set({ suggestPasswords: false });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(menu.visible, false);
+  await browser.storage.local.set({ suggestPasswords: true });
 
   // Listing: only www/ entries.
   let reply = await send("manager-list");
