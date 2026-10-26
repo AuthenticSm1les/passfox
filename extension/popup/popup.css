@@ -16,25 +16,6 @@ body {
   flex-direction: column;
 }
 
-:root[view="all"] {
-  body {
-    background: var(--background-color-canvas);
-  }
-
-  .panelview {
-    width: auto;
-    max-width: 40em;
-    margin: var(--space-xlarge) auto;
-    border: 1px solid var(--panel-border-color);
-    border-radius: var(--panel-border-radius);
-    background: var(--panel-background-color);
-  }
-
-  #list {
-    max-height: none;
-  }
-}
-
 .panel-header {
   display: flex;
   align-items: center;

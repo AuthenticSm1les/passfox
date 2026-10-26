@@ -1,6 +1,5 @@
 "use strict";
 
-const allView = new URL(location.href).searchParams.get("view") == "all";
 const list = document.getElementById("list");
 const search = document.getElementById("search");
 const message = document.getElementById("message");
@@ -37,10 +36,8 @@ function showMessage(text) {
 }
 
 function labelsFor(entry) {
-  const name = entry.username || (allView ? entry.path.split("/").at(-1) : "No username");
-  const where = allView
-    ? entry.domain ?? entry.path.split("/").slice(0, -1).join("/")
-    : entry.exact ? "From this website" : entry.domain;
+  const name = entry.username || "No username";
+  const where = entry.exact ? "From this website" : entry.domain;
   return { name, where };
 }
 
@@ -82,17 +79,11 @@ function row(entry) {
       button.click();
     }
   });
-  button.title = allView ? entry.path : `Fill ${name}`;
+  button.title = `Fill ${name}`;
   button.addEventListener("click", async () => {
     try {
-      if (allView) {
-        await call("copy", { path: entry.path, field: "password" });
-        description.textContent = "Password copied";
-        setTimeout(() => (description.textContent = where ?? ""), 2000);
-      } else {
-        await call("fill", { tabId: tab.id, path: entry.path });
-        window.close();
-      }
+      await call("fill", { tabId: tab.id, path: entry.path });
+      window.close();
     } catch (error) {
       showMessage(error.message);
     }
@@ -108,7 +99,7 @@ function render() {
   list.replaceChildren(...shown.map(row));
   list.hidden = !shown.length;
   if (!entries.length) {
-    showMessage(allView ? "No passwords found" : "No saved passwords for this website");
+    showMessage("No saved passwords for this website");
   } else {
     showMessage(shown.length ? "" : "No passwords found");
   }
@@ -145,30 +136,27 @@ async function showDoorhanger(pending) {
 }
 
 async function init() {
-  document.documentElement.setAttribute("view", allView ? "all" : "site");
+  document.documentElement.setAttribute("view", "site");
   document.querySelector(".search").prepend(icon("search-textbox"));
-  document.getElementById("footer").hidden = allView;
   document.getElementById("manage").addEventListener("click", async () => {
-    await call("openManager", {});
+    // Opens the passwords page on this site, like Firefox's about:logins.
+    let select = null;
+    try {
+      select = new URL(tab?.url).hostname || null;
+    } catch {}
+    await call("openManager", { select });
     window.close();
   });
   search.addEventListener("input", render);
 
   try {
-    if (allView) {
-      const { managerQuery = "" } = await browser.storage.session.get("managerQuery");
-      await browser.storage.session.remove("managerQuery");
-      search.value = managerQuery;
-      entries = await call("logins", { all: true, refresh: true });
-    } else {
-      [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      const pending = await call("pending", { tabId: tab.id });
-      if (pending) {
-        await showDoorhanger(pending);
-        return;
-      }
-      entries = await call("logins", { tabId: tab.id });
+    [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const pending = await call("pending", { tabId: tab.id });
+    if (pending) {
+      await showDoorhanger(pending);
+      return;
     }
+    entries = await call("logins", { tabId: tab.id });
     render();
   } catch (error) {
     list.hidden = true;

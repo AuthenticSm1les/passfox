@@ -36,7 +36,7 @@ jobs:
           node-version: 22
 
       - name: Lint
-        run: npx --yes addons-linter@latest --warnings-as-errors extension
+        run: python3 -I tools/lint.py
 
       - name: Package native host
         run: |

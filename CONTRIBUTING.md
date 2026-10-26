@@ -11,6 +11,7 @@ the two.
 | Path | What it is |
 | --- | --- |
 | `extension/` | The Firefox add-on (Manifest V3) |
+| `extension/logins/` | The passwords page: Firefox's about:logins with passfox's bridge and Fluent shim |
 | `host/passfox_host.py` | Native messaging host that runs `pass` |
 | `install.sh` | Installs the host for the current user |
 | `test/` | Host tests, harness pages and mock login pages |
@@ -22,7 +23,7 @@ the two.
 ```sh
 python3 -I test/host_test.py              # host tests with a throwaway GPG key and store
 python3 -I test/serve.py 8765 .           # then open /test/harness.html or /test/popup-harness.html(#pending)
-npx addons-linter --warnings-as-errors extension
+python3 -I tools/lint.py                  # addons-linter, as AMO runs it
 ```
 
 The host tests never touch your own store or keyring. The harness pages run
@@ -69,6 +70,35 @@ The tokens use system colours (Field, AccentColor, Menu), like Firefox's own
 UI on Linux, so passfox follows the GTK theme in light and dark. After a
 Firefox update, run `tools/vendor-firefox.sh` again. Vendored and adapted
 Firefox files are under the MPL-2.0 and keep their headers.
+
+### The passwords page
+
+`extension/logins/logins.html` is Firefox's own `aboutLogins.html`, generated
+by `tools/vendor-aboutlogins.py` along with everything it loads (its Lit
+components, styles, icons and Fluent strings) under
+`extension/vendor/firefox/chrome/`. The script rewrites `chrome://` URLs, applies
+Nova, swaps Mozilla branding and Firefox-only `page-icon:` favicons for
+passfox's, gives `context-fill` icons light and dark colours, and hides the
+menu items for importing, exporting and removing everything.
+
+Two small files stand in for Firefox's internals:
+
+- `logins/bridge.js` replaces the `AboutLogins` actors. It answers the page's
+  `AboutLogins*` events through the background and native host, and sends
+  `AboutLoginsChromeToContent` messages back. Passwords aren't sent up front:
+  the page asks for authentication (`promptForPrimaryPassword`) before
+  revealing, copying or editing, and that's when the bridge decrypts one
+  entry.
+- `logins/l10n.js` is a compact Fluent implementation for `document.l10n`,
+  reading Firefox's `aboutLogins.ftl` plus `logins/passfox.ftl`, which
+  overrides the brand and a few strings.
+
+Test it outside Firefox with the fake API in `test/logins-stub.js`:
+
+```sh
+python3 -I test/serve.py 8767 extension   # then open /logins/logins.html?stub=logins-stub.js
+node test/manager_test.mjs                # the page's background handlers, end to end
+```
 
 ## Screenshots
 

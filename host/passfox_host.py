@@ -209,6 +209,51 @@ def cmd_adopt(msg):
     return {"ok": True, "entry": describe(target)}
 
 
+def set_field(lines, keys, key, value):
+    """Point the first line under any of keys at value, or add key: value."""
+    for i, line in enumerate(lines):
+        name, sep, _ = line.partition(":")
+        if sep and name.strip().lower() in keys:
+            lines[i] = f"{name}: {value}"
+            return
+    lines.append(f"{key}: {value}")
+
+
+def cmd_edit(msg):
+    """Edit a login from the passwords page: new password, username and
+    site. Other lines stay as they are; login:/url: (or their aliases) are
+    updated in place. A new site or username renames the entry."""
+    path = check_path(msg.get("path"))
+    target = check_path(msg.get("to") or path, must_exist=False)
+    password = msg.get("password") or ""
+    username = msg.get("username") or ""
+    url = msg.get("url") or ""
+    if not password or any("\n" in v or "\r" in v for v in (password, username, url)):
+        raise ValueError("invalid password, username or url")
+    if url and not re.match(r"^https?://[^\s/]+$", url):
+        raise ValueError("url must be a site origin")
+    if target != path and os.path.exists(os.path.join(STORE, target + ".gpg")):
+        raise ValueError("an entry for that site and username already exists")
+    lines = run_pass(["show", "--", path]).split("\n")[1:]
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if username:
+        set_field(lines, USERNAME_KEYS, "login", username)
+    if url:
+        set_field(lines, URL_KEYS, "url", url)
+    run_pass(["insert", "--multiline", "--force", "--", path], stdin="\n".join([password, *lines]) + "\n")
+    if target != path:
+        run_pass(["mv", "--", path, target])
+    return {"ok": True, "entry": describe(target)}
+
+
+def cmd_remove(msg):
+    """Remove one login (the passwords page asks the user to confirm)."""
+    path = check_path(msg.get("path"))
+    run_pass(["rm", "--force", "--", path])
+    return {"ok": True}
+
+
 COMMANDS = {
     "list": cmd_list,
     "get": cmd_get,
@@ -216,6 +261,8 @@ COMMANDS = {
     "generate": cmd_generate,
     "clip": cmd_clip,
     "adopt": cmd_adopt,
+    "edit": cmd_edit,
+    "remove": cmd_remove,
 }
 
 

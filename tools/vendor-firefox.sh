@@ -1,6 +1,8 @@
 #!/bin/sh
-# Re-vendor the Firefox design tokens and icons passfox copies, straight from
-# the installed Firefox (default /usr/lib/firefox). Needs 7z.
+# Re-vendor what passfox copies from Firefox, straight from the installed
+# Firefox (default /usr/lib/firefox): the design tokens and icons for the
+# autocomplete popup and doorhanger, and about:logins for the passwords page.
+# Needs 7z.
 set -eu
 
 ff=${1:-/usr/lib/firefox}
@@ -9,8 +11,9 @@ out="$here/extension/vendor/firefox"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-7z x -y -o"$tmp/gre" "$ff/omni.ja" 'chrome/toolkit/skin/classic/global/*' >/dev/null 2>&1 || true
-7z x -y -o"$tmp/browser" "$ff/browser/omni.ja" 'chrome/browser/skin/classic/browser/login.svg' >/dev/null 2>&1 || true
+# omni.ja is an optimized zip that 7z reads with a warning, hence || true.
+7z x -y -o"$tmp/gre" "$ff/omni.ja" >/dev/null 2>&1 || true
+7z x -y -o"$tmp/browser" "$ff/browser/omni.ja" >/dev/null 2>&1 || true
 g="$tmp/gre/chrome/toolkit/skin/classic/global"
 
 mkdir -p "$out/icons"
@@ -29,3 +32,4 @@ done
 "$ff/firefox" --version > "$out/VERSION" 2>/dev/null || true
 
 python3 "$here/tools/gen-icons.py"
+python3 -I "$here/tools/vendor-aboutlogins.py" "$tmp"

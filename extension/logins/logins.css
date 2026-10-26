@@ -1,0 +1,15 @@
+/* passfox additions to Firefox's about:logins page. */
+
+/* No Firefox Account or Sync: passwords sync however your pass store does. */
+fxaccounts-button {
+  display: none !important;
+}
+
+/* The helper isn't installed or pass failed: say so above the page. */
+body[data-passfox-error]::before {
+  content: "Can't reach pass: " attr(data-passfox-error) ". Install the passfox helper (passfox-host on the AUR, or install.sh), then reload this page.";
+  grid-area: header;
+  align-self: center;
+  margin-inline: var(--space-large);
+  color: var(--text-color-error);
+}

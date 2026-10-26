@@ -17,5 +17,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: Passwords page handlers (end to end)
+        run: node test/manager_test.mjs
       - name: Lint extension
-        run: npx --yes addons-linter@latest --warnings-as-errors extension
+        run: python3 -I tools/lint.py

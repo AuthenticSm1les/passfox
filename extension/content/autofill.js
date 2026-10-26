@@ -275,7 +275,7 @@
     button.addEventListener("click", e => {
       e.stopPropagation();
       closePopup();
-      call("openManager", { query: login.username || login.domain });
+      call("openManager", { select: login.path });
     });
     return button;
   }

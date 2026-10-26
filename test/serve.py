@@ -14,6 +14,7 @@ import functools
 import http.server
 import pathlib
 import sys
+import urllib.parse
 
 PAGES = pathlib.Path(__file__).resolve().parent / "pages"
 
@@ -28,13 +29,40 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # /delay?ms=N answers after N ms: a page can hold its load event
         # (and so a headless screenshot) until it has finished setting up.
         if self.path.startswith("/delay"):
-            import time, urllib.parse
+            import time
             ms = int(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("ms", ["1000"])[0])
             time.sleep(min(ms, 10000) / 1000)
             self.send_response(204)
             self.end_headers()
             return
+        # /__test/... serves test/ whatever the root, and ?stub=NAME injects
+        # /__test/NAME ahead of an HTML page's own scripts (a fake extension
+        # API for extension pages served from extension/).
+        url = urllib.parse.urlparse(self.path)
+        if url.path.startswith("/__test/"):
+            self.path = url.path
+            return self.serve_file(PAGES.parent / url.path[len("/__test/"):])
+        stub = urllib.parse.parse_qs(url.query).get("stub")
+        if stub and url.path.endswith(".html"):
+            html = (pathlib.Path(self.directory) / url.path.lstrip("/")).read_text()
+            tag = f'<script src="/__test/{stub[0]}"></script>'
+            html = html.replace("<head>", "<head>\n    " + tag, 1)
+            return self.send_body(html.encode(), "text/html; charset=utf-8")
         super().do_GET()
+
+    def serve_file(self, path):
+        if not path.is_file():
+            self.send_error(404)
+            return
+        kind = "text/javascript" if path.suffix in (".js", ".mjs") else "text/html" if path.suffix == ".html" else "application/octet-stream"
+        self.send_body(path.read_bytes(), kind)
+
+    def send_body(self, body, kind):
+        self.send_response(200)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)

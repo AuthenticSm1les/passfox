@@ -108,6 +108,22 @@ def main():
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
         assert got == {"password": gen["password"], "username": "alice", "url": "https://github.com"}, got
         assert "error" in ask(env, {"action": "get", "path": "www/github.com/passfox-generated-2"})
+        # Editing from the passwords page: values change in place, other
+        # lines stay, and a new site or username renames the entry.
+        insert("www/edit.test/kim", "old\nuser: kim\nnote: keep\nwebsite: https://edit.test\n")
+        assert ask(env, {"action": "edit", "path": "www/edit.test/kim", "password": "new", "username": "kim", "url": "https://edit.test"})["ok"]
+        assert raw("www/edit.test/kim") == "new\nuser: kim\nnote: keep\nwebsite: https://edit.test\n", raw("www/edit.test/kim")
+        assert ask(env, {"action": "edit", "path": "www/edit.test/kim", "to": "www/other.test/lee", "password": "new2", "username": "lee", "url": "https://other.test"})["ok"]
+        assert raw("www/other.test/lee") == "new2\nuser: lee\nnote: keep\nwebsite: https://other.test\n", raw("www/other.test/lee")
+        assert "error" in ask(env, {"action": "get", "path": "www/edit.test/kim"})
+        assert "error" in ask(env, {"action": "edit", "path": "www/other.test/lee", "to": "www/github.com/alice", "password": "x", "username": "alice"})
+        assert "error" in ask(env, {"action": "edit", "path": "misc/notes", "password": "x"})
+        # Removing one login; nothing outside www/.
+        assert ask(env, {"action": "remove", "path": "www/other.test/lee"})["ok"]
+        assert "error" in ask(env, {"action": "get", "path": "www/other.test/lee"})
+        assert "error" in ask(env, {"action": "remove", "path": "misc/notes"})
+        assert raw("misc/notes").startswith("nothing")
+
         # Only generated entries can be adopted (i.e. renamed or removed).
         assert "error" in ask(env, {"action": "adopt", "from": "www/github.com/work", "to": "www/github.com/x", "username": "x"})
         assert "error" in ask(env, {"action": "bogus"})

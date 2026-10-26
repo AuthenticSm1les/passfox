@@ -100,8 +100,24 @@ first. After you submit the form, passfox asks
 Click the passfox button to see the logins for the site you're on: click a
 login to fill it, or use the buttons beside it to copy the username or the
 password. Passwords are copied with `pass show -c`, so pass clears the
-clipboard again after its usual 45 seconds. **Manage Passwords** opens a
-searchable list of all your logins in a tab.
+clipboard again after its usual 45 seconds.
+
+### Manage your passwords
+
+**Manage Passwords** (in the toolbar panel and at the bottom of the login
+dropdown) opens Firefox's own passwords page, `about:logins`, running on your
+pass store. Search and sort your logins, and for each one:
+
+- reveal or copy the password (pass decrypts just that entry when you ask,
+  so pinentry may appear),
+- **Edit** the website address, username or password: other lines in the
+  entry are kept, and a new site or username renames the entry,
+- **Remove** it, after confirming (`pass rm`; with a git-backed store,
+  `pass git` can bring it back),
+- or add a new login with the **+** button.
+
+Logins show Firefox's default site icon, since passfox can't read Firefox's
+favicon history.
 
 ## Your store
 

@@ -248,14 +248,11 @@ async function tabUrl(tabId) {
 const handlers = {
   css: () => loadCss(),
 
-  // Content scripts get the logins for their own frame; extension pages pass
-  // a tab or ask for everything.
+  // Content scripts get the logins for their own frame; the toolbar panel
+  // passes its tab.
   async logins(msg, sender) {
     if (!isExtensionPage(sender)) {
       return loginsForUrl(sender.url);
-    }
-    if (msg.all) {
-      return allEntries({ force: msg.refresh });
     }
     return loginsForUrl(await tabUrl(msg.tabId));
   },
@@ -318,12 +315,100 @@ const handlers = {
 
   pendingDone: (msg, sender) => onPendingDone(sender, msg),
 
-  async openManager(msg) {
-    // Hand the search text over through session storage, not the URL.
-    await browser.storage.session.set({ managerQuery: msg.query ?? "" });
-    await browser.tabs.create({ url: browser.runtime.getURL("popup/popup.html?view=all") });
+  // Firefox's about:logins, rebuilt in logins/: open it (or switch to it)
+  // with a login or the current site selected, like Firefox does from the
+  // autocomplete footer and the edit pencil.
+  async openManager(msg, sender) {
+    const select = msg.select ?? (sender.tab && hostOf(sender.url)) ?? null;
+    const page = browser.runtime.getURL("logins/logins.html");
+    const { managerTab } = await browser.storage.session.get("managerTab");
+    const tab = managerTab != null && (await browser.tabs.get(managerTab).catch(() => null));
+    if (tab?.url?.startsWith(page)) {
+      await browser.tabs.update(tab.id, { active: true });
+      await browser.windows.update(tab.windowId, { focused: true });
+      browser.runtime.sendMessage({ type: "select-login", select }).catch(() => {});
+      return;
+    }
+    // Handed over through session storage rather than the URL.
+    await browser.storage.session.set({ managerSelect: select });
+    const created = await browser.tabs.create({ url: page });
+    await browser.storage.session.set({ managerTab: created.id });
+  },
+
+  /* ::::: the passwords page (extension page only) ::::: */
+
+  async "manager-list"(msg, sender) {
+    requireExtensionPage(sender);
+    return allEntries({ force: true });
+  },
+
+  async "manager-get"(msg, sender) {
+    requireExtensionPage(sender);
+    return native({ action: "get", path: msg.path });
+  },
+
+  async "manager-create"(msg, sender) {
+    requireExtensionPage(sender);
+    const { host, url } = siteOf(msg.origin);
+    const path = savePathFor(host, msg.username);
+    await rejectDuplicate(path, msg.username, url);
+    await native({ action: "insert", path, username: msg.username, password: msg.password, url });
+    listCache = null;
+    return { path, domain: host, username: msg.username, modified: Date.now() };
+  },
+
+  async "manager-update"(msg, sender) {
+    requireExtensionPage(sender);
+    const old = (await allEntries({ force: true })).find(e => e.path == msg.path);
+    if (!old) {
+      throw new Error("That login no longer exists in pass");
+    }
+    const { host, url } = siteOf(msg.origin);
+    const renamed = host != old.domain || (msg.username ?? "") != old.username;
+    const path = renamed ? savePathFor(host, msg.username) : msg.path;
+    if (renamed) {
+      await rejectDuplicate(path, msg.username, url);
+    }
+    await native({ action: "edit", path: msg.path, to: path, username: msg.username, password: msg.password, url });
+    listCache = null;
+    return { path, domain: host, username: msg.username, modified: Date.now() };
+  },
+
+  async "manager-remove"(msg, sender) {
+    requireExtensionPage(sender);
+    await native({ action: "remove", path: msg.path });
+    listCache = null;
+    return { ok: true };
   },
 };
+
+function requireExtensionPage(sender) {
+  if (!isExtensionPage(sender)) {
+    throw new Error("Not allowed");
+  }
+}
+
+function siteOf(origin) {
+  const url = new URL(origin);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("The website address must start with http:// or https://");
+  }
+  return { host: url.hostname, url: url.origin };
+}
+
+// Firefox's "This login already exists" error, which the page turns into
+// "An entry for … already exists. Go to existing entry?"
+async function rejectDuplicate(path, username, url) {
+  const host = new URL(url).hostname;
+  const existing = (await allEntries({ force: true })).find(
+    e => e.path == path || (e.domain == host && e.username == (username ?? ""))
+  );
+  if (existing) {
+    const error = new Error("This login already exists.");
+    error.existingLoginGuid = existing.path;
+    throw error;
+  }
+}
 
 browser.runtime.onMessage.addListener((msg, sender) => {
   const handler = handlers[msg?.type];
@@ -332,6 +417,6 @@ browser.runtime.onMessage.addListener((msg, sender) => {
   }
   return Promise.resolve(handler(msg, sender)).then(
     result => ({ result }),
-    error => ({ error: String(error?.message ?? error) })
+    error => ({ error: String(error?.message ?? error), existingLoginGuid: error?.existingLoginGuid })
   );
 });
