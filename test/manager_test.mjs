@@ -186,6 +186,16 @@ try {
   assert.equal(reply.result.path, "sites/example.net");
   assert.equal(run("pass", ["show", "sites/example.net"]), "pw-dan-2\nlogin: dana\nurl: https://example.net\n");
 
+  // Extra fields: created with a login, then replaced on edit, with the
+  // username and url lines kept.
+  reply = await send("manager-create", { origin: "https://fields.test", username: "kai", password: "pw", extra: ["pin: 1234", "note"] });
+  const fieldsPath = reply.result.path;
+  assert.equal(run("pass", ["show", fieldsPath]), "pw\nlogin: kai\nurl: https://fields.test\npin: 1234\nnote\n");
+  reply = await send("manager-get", { path: fieldsPath });
+  assert.equal(JSON.stringify(reply.result.extra), JSON.stringify(["pin: 1234", "note"]));
+  reply = await send("manager-update", { path: fieldsPath, origin: "https://fields.test", username: "kai", password: "pw", extra: ["pin: 9999"] });
+  assert.equal(run("pass", ["show", fieldsPath]), "pw\nlogin: kai\nurl: https://fields.test\npin: 9999\n");
+
   // Just a folder: any layout inside it is recognised, nothing outside.
   run("pass", ["insert", "-m", "www/carol@example.org"], "pw-carol\n");
   await browser.storage.local.set({ loginPattern: "www" });

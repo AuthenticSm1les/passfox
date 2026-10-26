@@ -69,6 +69,21 @@ PATCHES = {
             "    if (this.dataset.isNewLogin) {\n      fields.push(this._originInput);",
             "    if (this.dataset.isNewLogin || this.dataset.editing) {\n      fields.push(this._originInput);",
         ),
+        # Extra fields (the entry's other lines), drawn and read by
+        # logins/bridge.js: after each render, in "unsaved changes", and in
+        # the values the form saves.
+        (
+            "    this.#updatePasswordMessage();\n  }",
+            "    this.#updatePasswordMessage();\n    window.AboutLoginsUtils.renderExtraFields?.(this);\n  }",
+        ),
+        (
+            "    return this.dataset.editing && valuesChanged;",
+            "    valuesChanged ||= !!window.AboutLoginsUtils.extraFieldsChanged?.(this);\n    return this.dataset.editing && valuesChanged;",
+        ),
+        (
+            '        window.AboutLoginsUtils.getLoginOrigin(this._originInput.value) || "",\n    });',
+            '        window.AboutLoginsUtils.getLoginOrigin(this._originInput.value) || "",\n      extra: window.AboutLoginsUtils.extraFieldsFromForm?.(this),\n    });',
+        ),
     ],
 }
 
@@ -156,6 +171,15 @@ def build_page():
         + '<link rel="stylesheet" href="/logins/logins.css">\n    '
         + html[first_module:]
     )
+    # A place for the entry's extra fields, below the password.
+    html = html.replace(
+        '<link rel="stylesheet" href="chrome://browser/content/aboutlogins/components/login-item.css">',
+        '<link rel="stylesheet" href="chrome://browser/content/aboutlogins/components/login-item.css">\n      <link rel="stylesheet" href="/logins/extra-fields.css">',
+        1,
+    )
+    marker = "<login-timeline hidden ></login-timeline>"
+    assert html.count(marker) == 1, "login-item template changed"
+    html = html.replace(marker, '<div class="passfox-fields" hidden></div>\n              ' + marker)
     # pass is the store: no importing, exporting or removing everything here.
     # (Settings stays: it opens passfox's preferences in about:addons.)
     for item in ("menuitem-import-file", "menuitem-export", "menuitem-remove-all-logins"):

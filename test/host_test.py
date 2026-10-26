@@ -129,7 +129,7 @@ def main():
             assert "error" in ask(env, {"action": "list"}, layout=bad), bad
 
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
-        assert got == {"password": "s3cret", "username": "alice", "url": "https://github.com"}, got
+        assert got == {"password": "s3cret", "username": "alice", "url": "https://github.com", "extra": []}, got
         got = ask(env, {"action": "get", "path": "www/github.com/work"})
         assert got["username"] == "alice@work", got
 
@@ -141,7 +141,7 @@ def main():
         assert ask(env, {"action": "get", "path": "www/new.test/dave"})["password"] == "one"
         assert ask(env, {"action": "insert", "path": "www/github.com/alice", "username": "alice", "password": "two"})["ok"]
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
-        assert got == {"password": "two", "username": "alice", "url": "https://github.com"}, got
+        assert got == {"password": "two", "username": "alice", "url": "https://github.com", "extra": []}, got
         assert "error" in ask(env, {"action": "insert", "path": "www/x/y", "username": "a", "password": "a\nb"})
 
         # Generate with pass's own settings, then adopt into a new login...
@@ -158,7 +158,7 @@ def main():
         gen = ask(env, {"action": "generate", "path": "www/github.com/passfox-generated-2"})
         assert ask(env, {"action": "adopt", "from": "www/github.com/passfox-generated-2", "to": "www/github.com/alice", "username": "alice"})["ok"]
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
-        assert got == {"password": gen["password"], "username": "alice", "url": "https://github.com"}, got
+        assert got == {"password": gen["password"], "username": "alice", "url": "https://github.com", "extra": []}, got
         assert "error" in ask(env, {"action": "get", "path": "www/github.com/passfox-generated-2"})
         # Editing from the passwords page: values change in place, other
         # lines stay, and a new site or username renames the entry.
@@ -170,6 +170,14 @@ def main():
         assert "error" in ask(env, {"action": "get", "path": "www/edit.test/kim"})
         assert "error" in ask(env, {"action": "edit", "path": "www/other.test/lee", "to": "www/github.com/alice", "password": "x", "username": "alice"})
         assert "error" in ask(env, {"action": "edit", "path": "misc/notes", "password": "x"})
+        # Extra fields: get returns the other lines; edit can replace them.
+        insert("www/extra.test/joe", "pw\nlogin: joe\npin: 1234\notpauth://totp/x?secret=AB\nurl: https://extra.test\nnote\n")
+        got = ask(env, {"action": "get", "path": "www/extra.test/joe"})
+        assert got["extra"] == ["pin: 1234", "otpauth://totp/x?secret=AB", "note"], got
+        assert ask(env, {"action": "edit", "path": "www/extra.test/joe", "password": "pw", "username": "joe", "url": "https://extra.test", "extra": ["pin: 9999", "otpauth://totp/x?secret=AB", "question: first pet"]})["ok"]
+        assert raw("www/extra.test/joe") == "pw\nlogin: joe\nurl: https://extra.test\npin: 9999\notpauth://totp/x?secret=AB\nquestion: first pet\n", raw("www/extra.test/joe")
+        assert "error" in ask(env, {"action": "edit", "path": "www/extra.test/joe", "password": "pw", "extra": ["a\nb"]})
+
         # Removing one login; nothing outside www/.
         assert ask(env, {"action": "remove", "path": "www/other.test/lee"})["ok"]
         assert "error" in ask(env, {"action": "get", "path": "www/other.test/lee"})

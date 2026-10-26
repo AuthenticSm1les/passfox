@@ -272,6 +272,7 @@ export default class LoginItem extends HTMLElement {
     this._updateOriginDisplayState();
     this.#updateTimeline();
     this.#updatePasswordMessage();
+    window.AboutLoginsUtils.renderExtraFields?.(this);
   }
 
   #updateTimeline() {
@@ -759,6 +760,7 @@ export default class LoginItem extends HTMLElement {
       this._loginFromForm()
     );
 
+    valuesChanged ||= !!window.AboutLoginsUtils.extraFieldsChanged?.(this);
     return this.dataset.editing && valuesChanged;
   }
 
@@ -923,6 +925,7 @@ export default class LoginItem extends HTMLElement {
       password: this._passwordInput.value,
       origin:
         window.AboutLoginsUtils.getLoginOrigin(this._originInput.value) || "",
+      extra: window.AboutLoginsUtils.extraFieldsFromForm?.(this),
     });
   }
 

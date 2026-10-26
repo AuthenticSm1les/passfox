@@ -79,6 +79,118 @@
     });
   }
 
+  /* ::::: extra fields: the entry's other lines ::::: */
+
+  // A line is shown as a named field ("pin: 1234") unless it isn't one, like
+  // an otpauth:// URI or a free-text note, which shows as an unnamed value.
+  function parseLine(raw) {
+    const m = raw.match(/^([^:/]+?):[ \t]?(.*)$/);
+    return m && !m[2].startsWith("//") ? { raw, name: m[1].trim(), value: m[2] } : { raw, name: "", value: raw };
+  }
+
+  // Unchanged lines are written back exactly as they were.
+  function serialize(fields) {
+    return fields
+      .filter(f => f.name.trim() || f.value.trim())
+      .map(f => {
+        const original = f.raw != null && parseLine(f.raw);
+        if (original && original.name == f.name && original.value == f.value) {
+          return f.raw;
+        }
+        return f.name.trim() ? `${f.name.trim()}: ${f.value}` : f.value;
+      });
+  }
+
+  const drafts = new WeakMap(); // login-item -> { guid, fields } while editing
+
+  function draftFor(item) {
+    const login = item._login;
+    let draft = drafts.get(item);
+    if (!draft || draft.guid != login.guid) {
+      draft = { guid: login.guid, fields: (login.extra ?? []).map(parseLine) };
+      drafts.set(item, draft);
+    }
+    return draft;
+  }
+
+  function el(tag, props = {}, ...children) {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  }
+
+  function renderExtraFields(item) {
+    const box = item.shadowRoot.querySelector(".passfox-fields");
+    if (!box) {
+      return;
+    }
+    const login = item._login;
+    const editing = !!item.dataset.editing;
+    if (!editing) {
+      drafts.delete(item);
+    }
+    // Like the password, extra fields show once the entry is decrypted.
+    const loaded = !login.guid || Array.isArray(login.extra);
+    if (!loaded) {
+      box.hidden = true;
+      box.replaceChildren();
+      return;
+    }
+    if (!editing) {
+      const fields = (login.extra ?? []).map(parseLine).filter(f => f.name || f.value.trim());
+      box.hidden = !fields.length;
+      box.replaceChildren(
+        ...fields.map(f =>
+          el(
+            "div",
+            { className: "detail-row" },
+            el(
+              "label",
+              { className: "detail-cell" },
+              el("span", { className: "field-label", textContent: f.name || "Note" }),
+              el("input", { type: "text", value: f.value, readOnly: true, tabIndex: -1, dir: "auto" })
+            )
+          )
+        )
+      );
+      return;
+    }
+    const draft = draftFor(item);
+    box.hidden = false;
+    const rows = draft.fields.map((f, i) => {
+      const name = el("input", { type: "text", value: f.name, placeholder: "Field name", className: "field-name" });
+      const value = el("input", { type: "text", value: f.value, placeholder: "Value", className: "field-value", dir: "auto" });
+      name.setAttribute("aria-label", "Field name");
+      value.setAttribute("aria-label", f.name ? `${f.name} value` : "Value");
+      name.addEventListener("input", () => (f.name = name.value));
+      value.addEventListener("input", () => (f.value = value.value));
+      const remove = el("button", { type: "button", className: "ghost-button remove-field", title: "Remove field" });
+      remove.setAttribute("aria-label", "Remove field");
+      remove.addEventListener("click", () => {
+        draft.fields.splice(i, 1);
+        renderExtraFields(item);
+      });
+      return el("div", { className: "field-row" }, name, value, remove);
+    });
+    const add = el("button", { type: "button", className: "add-field", textContent: "Add field" });
+    add.addEventListener("click", () => {
+      draft.fields.push({ raw: null, name: "", value: "" });
+      renderExtraFields(item);
+      box.querySelector(".field-row:last-of-type .field-name")?.focus();
+    });
+    box.replaceChildren(el("span", { className: "field-label", textContent: "More fields" }), ...rows, add);
+  }
+
+  function extraFieldsFromForm(item) {
+    const draft = item.dataset.editing && drafts.get(item);
+    return draft && draft.guid == item._login.guid ? serialize(draft.fields) : item._login.extra;
+  }
+
+  function extraFieldsChanged(item) {
+    const current = extraFieldsFromForm(item);
+    return !!current && JSON.stringify(current) != JSON.stringify(item._login.extra ?? []);
+  }
+
   /* ::::: AboutLoginsUtils (Firefox's child actor puts this on window) ::::: */
 
   window.AboutLoginsUtils = {
@@ -107,7 +219,12 @@
       }
       try {
         const details = await call("manager-get", { path: login.guid });
-        const updated = { ...login, password: details.password, username: details.username ?? login.username };
+        const updated = {
+          ...login,
+          password: details.password,
+          username: details.username ?? login.username,
+          extra: details.extra ?? [],
+        };
         if (details.url) {
           try {
             updated.origin = updated.formActionOrigin = new URL(details.url).origin;
@@ -127,6 +244,9 @@
         resolve(false);
       }
     },
+    renderExtraFields,
+    extraFieldsChanged,
+    extraFieldsFromForm,
     primaryPasswordEnabled: true,
     passwordRevealVisible: true,
     importVisible: false,
@@ -171,7 +291,7 @@
   async function create(login) {
     try {
       const entry = await call("manager-create", login);
-      const added = toLogin(entry, { password: login.password, username: login.username, url: login.origin });
+      const added = { ...toLogin(entry, { password: login.password, username: login.username, url: login.origin }), extra: login.extra ?? [] };
       send("LoginAdded", added);
       selectLogin(added);
     } catch (error) {
@@ -187,7 +307,10 @@
     }
     try {
       const entry = await call("manager-update", { path: login.guid, ...login });
-      const updated = toLogin(entry, { password: login.password, username: login.username, url: login.origin });
+      const updated = {
+        ...toLogin(entry, { password: login.password, username: login.username, url: login.origin }),
+        extra: login.extra ?? old?.extra,
+      };
       if (entry.path == login.guid) {
         send("LoginModified", updated);
       } else {

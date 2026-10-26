@@ -1,0 +1,31 @@
+/* The entry's extra fields on the passwords page, laid out like Firefox's
+ * own username and password rows (login-item.css). */
+
+.passfox-fields {
+  display: grid;
+  gap: var(--space-medium);
+  margin-block: var(--space-large) 0;
+
+  &[hidden] {
+    display: none;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: minmax(8em, 1fr) 2fr auto;
+    gap: var(--space-small);
+    align-items: center;
+  }
+
+  .remove-field {
+    width: var(--button-min-height);
+    height: var(--button-min-height);
+    min-width: 0;
+    padding: 0;
+    background: url("/vendor/firefox/chrome/global/skin/icons/delete.svg") center / 16px no-repeat;
+  }
+
+  .add-field {
+    justify-self: start;
+  }
+}

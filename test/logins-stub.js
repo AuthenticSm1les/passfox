@@ -33,7 +33,10 @@
         stubLog.push(msg);
         switch (msg.type) {
           case "manager-list": return { result: entries };
-          case "manager-get": return { result: { password: "correct-horse-" + msg.path.split("/").at(-1), username: null, url: null } };
+          case "manager-get": return { result: {
+            password: "correct-horse-" + msg.path.split("/").at(-1), username: null, url: null,
+            extra: msg.path == "www/github.com/alice" ? ["pin: 1234", "otpauth://totp/x?secret=AB", "question:first pet"] : [],
+          } };
           case "manager-create":
             if (entries.some(e => e.domain == new URL(msg.origin).hostname && e.username == msg.username)) {
               return { error: "This login already exists.", existingLoginGuid: entries.find(e => e.username == msg.username).path };

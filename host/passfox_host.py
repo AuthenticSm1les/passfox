@@ -195,7 +195,22 @@ def parse_entry(text):
             fields.setdefault(key.strip().lower(), value.strip())
     username = next((fields[k] for k in USERNAME_KEYS if fields.get(k)), None)
     url = next((fields[k] for k in URL_KEYS if fields.get(k)), None)
-    return {"password": password, "username": username, "url": url}
+    login_line, url_line = field_lines(lines[1:])
+    extra = [line for i, line in enumerate(lines[1:]) if i not in (login_line, url_line)]
+    while extra and not extra[-1].strip():
+        extra.pop()
+    return {"password": password, "username": username, "url": url, "extra": extra}
+
+
+def field_lines(lines):
+    """Indexes of the first username line and the first url line (or None):
+    the ones the passwords page edits as Username and Website address."""
+    def first(keys):
+        return next(
+            (i for i, line in enumerate(lines) if ":" in line and line.partition(":")[0].strip().lower() in keys),
+            None,
+        )
+    return first(USERNAME_KEYS), first(URL_KEYS)
 
 
 def cmd_get(msg):
@@ -311,6 +326,14 @@ def cmd_edit(msg):
     lines = run_pass(["show", "--", path]).split("\n")[1:]
     while lines and not lines[-1].strip():
         lines.pop()
+    extra = msg.get("extra")
+    if extra is not None:
+        # The passwords page sent the entry's other lines (its extra fields):
+        # keep the username and url lines and replace everything else.
+        if not isinstance(extra, list) or any(not isinstance(l, str) or "\n" in l or "\r" in l for l in extra):
+            raise ValueError("invalid extra fields")
+        keep = [i for i in field_lines(lines) if i is not None]
+        lines = [lines[i] for i in sorted(keep)] + extra
     if username:
         set_field(lines, USERNAME_KEYS, "login", username)
     if url:

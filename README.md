@@ -122,6 +122,9 @@ pass store. Search and sort your logins, and for each one:
   so pinentry may appear),
 - **Edit** the website address, username or password: other lines in the
   entry are kept, and a new site or username renames the entry,
+- see and edit the entry's **other fields** under *More fields* (its other
+  lines, such as `pin: 1234`): change, remove or **Add field**; lines you
+  don't touch, like `otpauth://` URIs, are kept exactly as they are,
 - **Remove** it, after confirming (`pass rm`; with a git-backed store,
   `pass git` can bring it back),
 - or add a new login with the **+** button.

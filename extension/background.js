@@ -473,6 +473,9 @@ const handlers = {
     const path = savePathFor(host, msg.username);
     await rejectDuplicate(path, msg.username, url);
     await native({ action: "insert", path, username: msg.username, password: msg.password, url });
+    if (msg.extra?.length) {
+      await native({ action: "edit", path, username: msg.username, password: msg.password, url, extra: msg.extra });
+    }
     listCache = null;
     return { path, domain: host, username: msg.username, modified: Date.now() };
   },
@@ -494,7 +497,15 @@ const handlers = {
     if (renamed) {
       await rejectDuplicate(path, msg.username, url);
     }
-    await native({ action: "edit", path: msg.path, to: path, username: msg.username, password: msg.password, url });
+    await native({
+      action: "edit",
+      path: msg.path,
+      to: path,
+      username: msg.username,
+      password: msg.password,
+      url,
+      extra: Array.isArray(msg.extra) ? msg.extra : undefined,
+    });
     listCache = null;
     return { path, domain: host, username: msg.username, modified: Date.now() };
   },
