@@ -18,13 +18,20 @@ let cssCache = null;
 // The folder holding website logins, from passfox's preferences ("" is the
 // password store root). Every native request carries it, and the host keeps
 // to it: nothing outside is listed, read or written.
+// The name pattern for login entries inside it ({site} and {username}).
+const DEFAULT_LAYOUT = "{site}/{username}";
 let loginDir = "";
+let loginLayout = DEFAULT_LAYOUT;
 const settingsReady = browser.storage.local
-  .get({ loginDir: "" })
-  .then(settings => (loginDir = settings.loginDir ?? ""));
+  .get({ loginDir: "", loginLayout: DEFAULT_LAYOUT })
+  .then(settings => {
+    loginDir = settings.loginDir ?? "";
+    loginLayout = settings.loginLayout || DEFAULT_LAYOUT;
+  });
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area == "local" && changes.loginDir) {
-    loginDir = changes.loginDir.newValue ?? "";
+  if (area == "local" && (changes.loginDir || changes.loginLayout)) {
+    loginDir = changes.loginDir ? changes.loginDir.newValue ?? "" : loginDir;
+    loginLayout = changes.loginLayout ? changes.loginLayout.newValue || DEFAULT_LAYOUT : loginLayout;
     listCache = null;
   }
 });
@@ -34,7 +41,11 @@ function inLoginDir(path) {
 }
 
 async function native(message) {
-  const response = await browser.runtime.sendNativeMessage(NATIVE_HOST, { dir: loginDir, ...message });
+  const response = await browser.runtime.sendNativeMessage(NATIVE_HOST, {
+    dir: loginDir,
+    layout: loginLayout,
+    ...message,
+  });
   if (response?.error) {
     throw new Error(response.error);
   }
@@ -152,13 +163,25 @@ browser.tabs.onRemoved.addListener(clearPending);
 
 const GENERATED_PREFIX = "passfox-generated-";
 
+// Where generated passwords wait when the name pattern has no {username}.
+const GENERATED_FOLDER = "passfox-generated";
+
 function isGeneratedPath(path) {
-  return path?.split("/").at(-1).startsWith(GENERATED_PREFIX);
+  const parts = path?.split("/") ?? [];
+  return !!parts.at(-1)?.startsWith(GENERATED_PREFIX) || parts.slice(0, -1).includes(GENERATED_FOLDER);
 }
 
+/** The entry for a login, named by the pattern from passfox's preferences. */
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
-  return inLoginDir(`${host}/${name}`);
+  return inLoginDir(loginLayout.replace("{site}", host).replace("{username}", name));
+}
+
+function generatedPathFor(host) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  return loginLayout.includes("{username}")
+    ? savePathFor(host, GENERATED_PREFIX + stamp)
+    : inLoginDir(`${GENERATED_FOLDER}/${host}/${stamp}`);
 }
 
 async function neverSaveHosts() {
@@ -182,7 +205,9 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
     // the form was submitted with, like Firefox's "Add username to saved
     // password?" (or fold it into that login if it already exists).
     if (isGeneratedPath(filledPath) && username) {
-      const existing = logins.find(e => e.username === username && !isGeneratedPath(e.path));
+      const existing =
+        logins.find(e => e.username === username && !isGeneratedPath(e.path)) ??
+        logins.find(e => e.path == savePathFor(host, username) && !isGeneratedPath(e.path));
       await presentPending(sender.tab, {
         mode: existing ? "update" : "add-username",
         from: filledPath,
@@ -198,8 +223,12 @@ async function onSubmitted(sender, { username, password, possibleUsernames = [],
     return;
   }
 
+  // With a pattern like {site}, the username isn't in the name: the entry
+  // the pattern points at is the existing login.
+  const target = savePathFor(host, username);
   const sameUser = logins.find(e => e.exact && e.username === (username || ""))
-    ?? logins.find(e => e.username === (username || "") && username);
+    ?? logins.find(e => e.username === (username || "") && username)
+    ?? logins.find(e => e.path == target && !isGeneratedPath(e.path));
   let pending;
   if (sameUser) {
     const current = await native({ action: "get", path: sameUser.path });
@@ -328,10 +357,9 @@ const handlers = {
     if (!host) {
       throw new Error("Not a website");
     }
-    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
     const result = await native({
       action: "generate",
-      path: inLoginDir(`${host}/${GENERATED_PREFIX}${stamp}`),
+      path: generatedPathFor(host),
       url: originOf(sender.url),
     });
     listCache = null;
@@ -401,8 +429,13 @@ const handlers = {
       throw new Error("That login no longer exists in pass");
     }
     const { host, url } = siteOf(msg.origin);
-    const renamed = host != old.domain || (msg.username ?? "") != old.username;
-    const path = renamed ? savePathFor(host, msg.username) : msg.path;
+    // Compare with the entry's real username (its login: line, if any), so
+    // an edit only renames when the site or username really changed.
+    const current = await native({ action: "get", path: msg.path });
+    const changed = host != old.domain || (msg.username ?? "") != (current.username ?? old.username ?? "");
+    const target = savePathFor(host, msg.username);
+    const renamed = changed && target != msg.path;
+    const path = renamed ? target : msg.path;
     if (renamed) {
       await rejectDuplicate(path, msg.username, url);
     }

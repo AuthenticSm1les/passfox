@@ -23,6 +23,43 @@ BASE = ""
 # Entries made by "Use a Securely Generated Password" before a username is
 # known; they count as having no username until adopted.
 GENERATED_PREFIX = "passfox-generated-"
+# Where generated passwords wait when the name pattern has no {username}.
+GENERATED_FOLDER = "passfox-generated"
+# How login entries are named inside the folder, from passfox's preferences.
+DEFAULT_LAYOUT = "{site}/{username}"
+LAYOUT = None
+
+
+def compile_layout(layout):
+    """Turn a name pattern like "{site}/{username}" into a matcher with
+    "site" and (optionally) "username" groups."""
+    layout = (layout or DEFAULT_LAYOUT).strip("/")
+    pieces = re.split(r"(\{[a-z]+\})", layout)
+    placeholders = [p for p in pieces if p.startswith("{")]
+    if (
+        placeholders.count("{site}") != 1
+        or placeholders.count("{username}") > 1
+        or set(placeholders) - {"{site}", "{username}"}
+        or any(part in ("", ".", "..") or part.startswith("-") for part in layout.split("/"))
+    ):
+        raise ValueError("invalid name pattern: use {site} once and {username} at most once")
+    # A trailing "/{username}" is optional, so an entry named just after the
+    # site (with a login: line inside) still counts as that site's login.
+    optional_username = layout.endswith("/{username}")
+    if optional_username:
+        pieces = re.split(r"(\{[a-z]+\})", layout[: -len("/{username}")])
+    regex = "".join(
+        "(?P<site>[^/]+)" if p == "{site}" else "(?P<username>.+)" if p == "{username}" else re.escape(p)
+        for p in pieces
+    )
+    if optional_username:
+        regex += "(?:/(?P<username>.+))?"
+    return re.compile(f"^{regex}$")
+
+
+def is_generated(path):
+    parts = path.split("/")
+    return parts[-1].startswith(GENERATED_PREFIX) or GENERATED_FOLDER in parts[:-1]
 
 
 def read_message():
@@ -48,6 +85,11 @@ def set_base(value):
     BASE = base
 
 
+def set_layout(value):
+    global LAYOUT
+    LAYOUT = compile_layout(value)
+
+
 def check_path(path, must_exist=True):
     """Return path if it is a safe entry name inside the store, else raise."""
     if not isinstance(path, str) or not path or path.startswith(("/", "-")):
@@ -68,13 +110,16 @@ def check_path(path, must_exist=True):
 
 def describe(path):
     """Map an entry path onto Firefox's site + username model."""
-    parts = (path[len(BASE) + 1:] if BASE else path).split("/")
-    if HOSTNAME_RE.match(parts[0]):
-        domain, username = parts[0].lower(), "/".join(parts[1:])
+    rel = path[len(BASE) + 1:] if BASE else path
+    match = (LAYOUT or compile_layout(None)).match(rel)
+    if match and HOSTNAME_RE.match(match["site"]):
+        domain = match["site"].lower()
+        username = match.groupdict().get("username") or ""
     else:
-        # A login whose folder isn't a hostname: listed, never matched.
-        domain, username = None, parts[-1]
-    if parts[-1].startswith(GENERATED_PREFIX):
+        # Not named like a login (or the site isn't a hostname): listed on
+        # the passwords page, never offered on a site.
+        domain, username = None, rel.split("/")[-1]
+    if is_generated(path):
         username = ""
     return {"path": path, "domain": domain, "username": username}
 
@@ -174,8 +219,8 @@ def cmd_insert(msg):
 
 def cmd_generate(msg):
     path = check_path(msg.get("path"), must_exist=False)
-    if not path.split("/")[-1].startswith(GENERATED_PREFIX):
-        raise ValueError("generated entries must be named " + GENERATED_PREFIX + "*")
+    if not is_generated(path):
+        raise ValueError(f"generated entries must be named {GENERATED_PREFIX}* or be in {GENERATED_FOLDER}/")
     if os.path.exists(os.path.join(STORE, path + ".gpg")):
         raise ValueError("entry already exists")
     # Length and character set come from the user's pass settings.
@@ -199,7 +244,7 @@ def cmd_adopt(msg):
     already exists, move the new password into it (keeping its other lines)
     and drop the generated entry."""
     source = check_path(msg.get("from"))
-    if not source.split("/")[-1].startswith(GENERATED_PREFIX):
+    if not is_generated(source):
         raise ValueError("only generated entries can be adopted")
     target = check_path(msg.get("to"), must_exist=False)
     password = parse_entry(run_pass(["show", "--", source]))["password"]
@@ -279,6 +324,7 @@ def main():
         if handler is None:
             raise ValueError(f"unknown action {msg.get('action')!r}")
         set_base(msg.get("dir"))
+        set_layout(msg.get("layout"))
         send_message(handler(msg))
     except Exception as exc:  # report every failure back to the extension
         send_message({"error": str(exc)})

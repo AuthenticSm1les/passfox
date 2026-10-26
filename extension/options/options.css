@@ -75,6 +75,10 @@ h2.section {
 .setting.folder {
   justify-content: flex-start;
 
+  > label {
+    min-width: 12em;
+  }
+
   input {
     flex: 1;
     max-width: 20em;
@@ -84,4 +88,9 @@ h2.section {
 
 .error {
   color: var(--text-color-error);
+}
+
+.examples {
+  margin-block: var(--space-xsmall) 0;
+  padding-inline-start: var(--space-xlarge);
 }

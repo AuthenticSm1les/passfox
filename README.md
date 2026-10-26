@@ -23,9 +23,8 @@ only connects it to Firefox.
 ## What you need
 
 - Firefox 142 or newer, on Linux or another unix-like system
-- [pass](https://www.passwordstore.org/) with your logins stored as
-  `<website>/<username>`, at the top of your store or in a folder of your
-  choice (see [Your store](#your-store))
+- [pass](https://www.passwordstore.org/) with one entry per login, named
+  after the website (see [Your store](#your-store))
 - Python 3
 - To copy passwords: `wl-copy` (Wayland) or `xclip` (X11), the same tools
   pass uses for `pass show -c`
@@ -128,18 +127,27 @@ favicon history.
 
 ## Your store
 
-passfox reads website logins as `<website>/<username>`, one entry per login.
-By default they're at the top of your store; if you keep them in a folder,
-such as `www/`, set it in passfox's [preferences](#settings) under
-**Folder with website logins**:
+passfox reads website logins as one entry per login, named after the
+website. Two [preferences](#settings) say where they are and how they're
+named:
+
+- **Folder with website logins**: empty (the default) for the top of your
+  store, or a folder such as `www`.
+- **Name of each login**: a pattern with `{site}` and `{username}`, by default
+  `{site}/{username}`.
 
 ```
-github.com/alice              → user alice on github.com
-accounts.example.com/sam      → user sam on accounts.example.com
+{site}/{username}     github.com/alice        → user alice on github.com
+{username}@{site}     alice@github.com        → user alice on github.com
+{site}                github.com              → github.com, username from its login: line
 
-with the folder set to www:
-www/github.com/alice          → user alice on github.com
+folder www, {site}/{username}:
+                      www/github.com/alice    → user alice on github.com
 ```
+
+With `{site}/{username}`, an entry named just after the site (`github.com`)
+counts too, with the username from its `login:` line. New logins are saved
+with the same pattern.
 
 Logins for a site's subdomains are offered too, for example
 `gist.github.com` logins on `github.com`. If an entry has a `login:`,
@@ -172,8 +180,8 @@ password settings:
   *Never save* on,
 - **Suggest strong passwords** on sign-up and change-password forms,
 - **Manage saved passwords**, which opens the passwords page,
-- **Folder with website logins** in your store (see [Your store](#your-store));
-  empty means the whole store.
+- **Folder with website logins** in your store and the **Name of each login**
+  (see [Your store](#your-store)).
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and

@@ -15,10 +15,10 @@ import tempfile
 HOST = pathlib.Path(__file__).resolve().parent.parent / "host" / "passfox_host.py"
 
 
-def ask(env, message, dir="www"):
-    """Send one request; dir is the login folder from passfox's preferences
-    (these tests mostly use a www/ layout)."""
-    data = json.dumps({"dir": dir, **message}).encode()
+def ask(env, message, dir="www", layout=None):
+    """Send one request; dir and layout are the login folder and name pattern
+    from passfox's preferences (these tests mostly use www/{site}/{username})."""
+    data = json.dumps({"dir": dir, "layout": layout, **message}).encode()
     out = subprocess.run(
         [sys.executable, "-I", str(HOST)],
         input=struct.pack("@I", len(data)) + data,
@@ -89,6 +89,25 @@ def main():
         assert [(e["path"], e["domain"], e["username"]) for e in nested] == [("misc/git/github.com", "github.com", "")], nested
         for bad in ("../x", "www/../misc", "-x"):
             assert "error" in ask(env, {"action": "list"}, dir=bad), bad
+
+        # Other name patterns: username@site, and one entry per site.
+        insert("names/bob@example.org", "pw\n")
+        insert("names/carol@work@example.org", "pw\n")
+        insert("sites/example.net", "pw\nlogin: dan\n")
+        named = {e["path"]: e for e in ask(env, {"action": "list"}, dir="names", layout="{username}@{site}")["entries"]}
+        assert (named["names/bob@example.org"]["domain"], named["names/bob@example.org"]["username"]) == ("example.org", "bob")
+        assert named["names/carol@work@example.org"]["username"] == "carol@work"
+        single = ask(env, {"action": "list"}, dir="sites", layout="{site}")["entries"]
+        assert [(e["domain"], e["username"]) for e in single] == [("example.net", "")], single
+        assert ask(env, {"action": "get", "path": "sites/example.net"}, dir="sites", layout="{site}")["username"] == "dan"
+        # With no {username}, generated passwords wait in passfox-generated/
+        # and move to the site's entry once used.
+        gen = ask(env, {"action": "generate", "path": "sites/passfox-generated/example.com/1", "url": "https://example.com"}, dir="sites", layout="{site}")
+        assert gen["entry"]["domain"] is None and gen["entry"]["username"] == "", gen
+        assert ask(env, {"action": "adopt", "from": "sites/passfox-generated/example.com/1", "to": "sites/example.com", "username": "erin", "url": "https://example.com"}, dir="sites", layout="{site}")["ok"]
+        assert raw("sites/example.com") == gen["password"] + "\nurl: https://example.com\nlogin: erin\n", raw("sites/example.com")
+        for bad in ("{username}", "{site}/{site}", "{site}/{user}", "../{site}", "{site}/{username}/{username}"):
+            assert "error" in ask(env, {"action": "list"}, layout=bad), bad
 
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
         assert got == {"password": "s3cret", "username": "alice", "url": "https://github.com"}, got

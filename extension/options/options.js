@@ -8,12 +8,24 @@ const list = document.getElementById("exception-list");
 const removeAll = document.getElementById("remove-all");
 const loginDir = document.getElementById("login-dir");
 const loginDirError = document.getElementById("login-dir-error");
+const loginLayout = document.getElementById("login-layout");
+const loginLayoutError = document.getElementById("login-layout-error");
+const DEFAULT_LAYOUT = "{site}/{username}";
 
 async function load() {
-  const settings = await browser.storage.local.get({ askToSave: true, suggestPasswords: true, neverSave: [], loginDir: "" });
+  const settings = await browser.storage.local.get({
+    askToSave: true,
+    suggestPasswords: true,
+    neverSave: [],
+    loginDir: "",
+    loginLayout: DEFAULT_LAYOUT,
+  });
   askToSave.checked = settings.askToSave;
   if (document.activeElement != loginDir) {
     loginDir.value = settings.loginDir;
+  }
+  if (document.activeElement != loginLayout) {
+    loginLayout.value = settings.loginLayout;
   }
   suggest.checked = settings.suggestPasswords;
   renderExceptions(settings.neverSave);
@@ -73,3 +85,31 @@ browser.storage.onChanged.addListener((changes, area) => {
 });
 
 load();
+
+// Same rules as the native host: {site} once, {username} at most once, no
+// other placeholders, and every part a plain name inside the folder.
+function layoutProblem(value) {
+  const placeholders = value.match(/\{[^}]*\}/g) ?? [];
+  const count = name => placeholders.filter(p => p == name).length;
+  if (count("{site}") != 1) {
+    return "Include {site} once.";
+  }
+  if (count("{username}") > 1 || placeholders.some(p => p != "{site}" && p != "{username}")) {
+    return "Only {site} and {username} can be used, each once.";
+  }
+  if (value.split("/").some(part => !part || part == "." || part == ".." || part.startsWith("-"))) {
+    return "Use names inside the folder, like {site}/{username}.";
+  }
+  return null;
+}
+
+loginLayout.addEventListener("change", () => {
+  const value = loginLayout.value.trim().replace(/^\/+|\/+$/g, "") || DEFAULT_LAYOUT;
+  const problem = layoutProblem(value);
+  loginLayoutError.hidden = !problem;
+  loginLayoutError.textContent = problem ?? "";
+  if (!problem) {
+    loginLayout.value = value;
+    browser.storage.local.set({ loginLayout: value });
+  }
+});

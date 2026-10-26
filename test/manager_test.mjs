@@ -153,6 +153,23 @@ try {
   assert.equal(reply.result.path, "root.test/ann");
   assert.equal(run("pass", ["show", "root.test/ann"]), "pw\nlogin: ann\nurl: https://root.test\n");
 
+  // Name patterns from the preferences: username@site...
+  await browser.storage.local.set({ loginDir: "named", loginLayout: "{username}@{site}" });
+  reply = await send("manager-create", { origin: "https://example.org", username: "bob", password: "pw-bob" });
+  assert.equal(reply.result.path, "named/bob@example.org");
+  reply = await send("manager-list");
+  assert.deepEqual(reply.result.map(e => [e.path, e.domain, e.username]), [["named/bob@example.org", "example.org", "bob"]]);
+
+  // ...and one entry per site, where a username change doesn't rename it.
+  await browser.storage.local.set({ loginDir: "sites", loginLayout: "{site}" });
+  reply = await send("manager-create", { origin: "https://example.net", username: "dan", password: "pw-dan" });
+  assert.equal(reply.result.path, "sites/example.net");
+  reply = await send("manager-create", { origin: "https://example.net", username: "eve", password: "x" });
+  assert.match(reply.error, /already exists/);
+  reply = await send("manager-update", { path: "sites/example.net", origin: "https://example.net", username: "dana", password: "pw-dan-2" });
+  assert.equal(reply.result.path, "sites/example.net");
+  assert.equal(run("pass", ["show", "sites/example.net"]), "pw-dan-2\nlogin: dana\nurl: https://example.net\n");
+
   console.log("manager tests passed");
 } finally {
   spawnSync("gpgconf", ["--kill", "gpg-agent"], { env });
