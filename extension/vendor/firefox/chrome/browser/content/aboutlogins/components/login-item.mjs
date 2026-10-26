@@ -901,7 +901,7 @@ export default class LoginItem extends HTMLElement {
    */
   _isFormValid({ reportErrors } = {}) {
     let fields = [this._passwordInput];
-    if (this.dataset.isNewLogin) {
+    if (this.dataset.isNewLogin || this.dataset.editing) {
       fields.push(this._originInput);
     }
     let valid = true;
@@ -971,7 +971,7 @@ export default class LoginItem extends HTMLElement {
     this._deleteButton.disabled = this.dataset.isNewLogin;
     this._editButton.disabled = shouldEdit;
     let inputTabIndex = shouldEdit ? 0 : -1;
-    this._originInput.readOnly = !this.dataset.isNewLogin;
+    this._originInput.readOnly = !(this.dataset.isNewLogin || shouldEdit);
     this._originInput.tabIndex = inputTabIndex;
     this._usernameInput.readOnly = !shouldEdit;
     this._usernameInput.tabIndex = inputTabIndex;
@@ -1026,9 +1026,9 @@ export default class LoginItem extends HTMLElement {
   _updateOriginDisplayState() {
     // Switches between the origin input and anchor tag depending
     // if a new login is being created.
-    if (this.dataset.isNewLogin) {
+    if (this.dataset.isNewLogin || this.dataset.editing) {
       this._originDisplayInput.replaceWith(this._originInput);
-      this._originInput.focus();
+      this.dataset.isNewLogin && this._originInput.focus();
     } else {
       this._originInput.replaceWith(this._originDisplayInput);
     }

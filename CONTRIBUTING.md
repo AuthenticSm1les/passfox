@@ -80,7 +80,10 @@ components, styles, icons and Fluent strings) under
 `extension/vendor/firefox/chrome/`. The script rewrites `chrome://` URLs, applies
 Nova, swaps Mozilla branding and Firefox-only `page-icon:` favicons for
 passfox's, gives `context-fill` icons light and dark colours, and hides the
-menu items for importing, exporting and removing everything.
+menu items for importing, exporting and removing everything. Its `PATCHES`
+list holds passfox's few changes to Firefox's own code (such as letting the
+website address be edited on existing logins); each must match exactly once,
+so a Firefox update that changes that code stops the script.
 
 Two small files stand in for Firefox's internals:
 

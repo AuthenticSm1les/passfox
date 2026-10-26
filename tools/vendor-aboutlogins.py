@@ -51,6 +51,27 @@ PAGE_ICON = re.compile(r"`page-icon:\$\{[^}`]*\}`|\"page-icon:[^\"]*\"")
 ICON_FILL = "<style>svg{fill:#15141a}@media (prefers-color-scheme: dark){svg{fill:#fbfbfe}}</style>"
 ICON_STROKE = "<style>svg{stroke:#15141a}@media (prefers-color-scheme: dark){svg{stroke:#fbfbfe}}</style>"
 
+# passfox's changes to Firefox's code, applied after copying (each must match
+# exactly once, so a Firefox update that changes the code fails loudly).
+PATCHES = {
+    "browser/content/aboutlogins/components/login-item.mjs": [
+        # The website address can be edited on existing logins, not only on
+        # new ones (pass entries are renamed to match).
+        (
+            "this._originInput.readOnly = !this.dataset.isNewLogin;",
+            "this._originInput.readOnly = !(this.dataset.isNewLogin || shouldEdit);",
+        ),
+        (
+            "    if (this.dataset.isNewLogin) {\n      this._originDisplayInput.replaceWith(this._originInput);\n      this._originInput.focus();",
+            "    if (this.dataset.isNewLogin || this.dataset.editing) {\n      this._originDisplayInput.replaceWith(this._originInput);\n      this.dataset.isNewLogin && this._originInput.focus();",
+        ),
+        (
+            "    if (this.dataset.isNewLogin) {\n      fields.push(this._originInput);",
+            "    if (this.dataset.isNewLogin || this.dataset.editing) {\n      fields.push(this._originInput);",
+        ),
+    ],
+}
+
 CHROME_URL = re.compile(r"chrome://(global|browser|branding)/(content|skin)/([A-Za-z0-9_./-]+)")
 RELATIVE_IMPORT = re.compile(r"""(?:from|import)\s*\(?\s*["'](\.{1,2}/[^"']+)["']""")
 TEXT_TYPES = {".css", ".mjs", ".js", ".html", ".svg"}
@@ -104,7 +125,11 @@ def vendor(start_files):
         text = rewrite(text)
         if path.suffix == ".css":
             text = unwrap_nova.unwrap(text)
-        elif path.suffix == ".svg" and '<g class="nova">' in text:
+        for old, new in PATCHES.get(f"{package}/{kind}/{rest}", []):
+            if text.count(old) != 1:
+                sys.exit(f"patch for {package}/{kind}/{rest} no longer applies:\n{old}")
+            text = text.replace(old, new)
+        if path.suffix == ".svg" and '<g class="nova">' in text:
             # Icons switch artwork with a -moz-pref() query too: keep Nova's.
             text = re.sub(r'<g class="proton">.*?</g>', "", text, flags=re.S)
             text = re.sub(r"<style>.*?</style>", "", text, flags=re.S)
