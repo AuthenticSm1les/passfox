@@ -40,13 +40,27 @@ function sendNativeMessage(_name, message) {
 
 const ORIGIN = "moz-extension://test/";
 let listener;
+const lifecycle = [];
+let passwordSaving = { value: true, levelOfControl: "controllable_by_this_extension" };
 const browser = {
   runtime: {
     getURL: path => ORIGIN + path,
     id: "passfox@test",
     sendNativeMessage,
     onMessage: { addListener: fn => (listener = fn) },
+    onInstalled: { addListener: fn => lifecycle.push(fn) },
+    onStartup: { addListener: fn => lifecycle.push(fn) },
     sendMessage: () => Promise.resolve(),
+  },
+  privacy: {
+    services: {
+      passwordSavingEnabled: {
+        get: async () => ({ ...passwordSaving }),
+        set: async ({ value }) => {
+          passwordSaving = { value, levelOfControl: "controlled_by_this_extension" };
+        },
+      },
+    },
   },
   storage: {
     session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
@@ -70,6 +84,11 @@ const page = { id: "passfox@test", url: ORIGIN + "logins/logins.html" };
 const send = async (type, data = {}, sender = page) => listener({ type, ...data }, sender);
 
 try {
+  // Installing switches off Firefox's own "Ask to save passwords".
+  await Promise.all(lifecycle.map(fn => fn()));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(passwordSaving.value, false);
+
   // Listing: only www/ entries.
   let reply = await send("manager-list");
   assert.deepEqual(reply.result.map(e => e.path), ["www/github.com/alice"]);

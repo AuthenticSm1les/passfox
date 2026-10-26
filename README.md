@@ -55,6 +55,12 @@ it run `pass` on your computer.
    piece), click the gear next to passfox, and choose *Pin to Toolbar*. The
    save prompt opens under this button.
 
+passfox takes over saving passwords, so it turns off Firefox's own *Ask to
+save passwords* (Settings → Privacy & Security → Passwords); otherwise you'd
+get two save prompts for every login. Passwords you saved in Firefox before
+stay where they are, and Firefox turns the setting back on if you remove or
+disable passfox.
+
 ## Using passfox
 
 ### Fill a login
@@ -160,7 +166,9 @@ the folder names, separated by colons (for example `www:web`).
 
 ## Privacy
 
-passfox collects no data and makes no network requests. Passwords are only
+passfox collects no data and makes no network requests. Its only change to
+Firefox's settings is turning off Firefox's own *Ask to save passwords*
+(see [Install](#install)). Passwords are only
 decrypted when you fill, copy or save a login, by your own gpg-agent, and only
 travel between Firefox and the helper on your computer.
 

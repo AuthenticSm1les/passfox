@@ -94,6 +94,23 @@ function isExtensionPage(sender) {
 }
 
 
+/* ::::: Firefox's own password manager ::::: */
+
+// passfox takes over saving passwords, so switch off Firefox's own "Ask to
+// save passwords"; otherwise Firefox prompts too, on every website and on
+// the passwords page. Firefox restores the setting if passfox is removed or
+// disabled, and its saved logins are left alone.
+async function takeOverPasswordSaving() {
+  const setting = browser.privacy.services.passwordSavingEnabled;
+  const { value, levelOfControl } = await setting.get({});
+  if (value && ["controllable_by_this_extension", "controlled_by_this_extension"].includes(levelOfControl)) {
+    await setting.set({ value: false });
+  }
+}
+
+browser.runtime.onInstalled.addListener(() => takeOverPasswordSaving().catch(() => {}));
+browser.runtime.onStartup.addListener(() => takeOverPasswordSaving().catch(() => {}));
+
 /* ::::: save / update doorhanger state ::::: */
 
 function pendingKey(tabId) {

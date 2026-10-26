@@ -17,7 +17,8 @@
   "permissions": [
     "nativeMessaging",
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "privacy"
   ],
   "host_permissions": [
     "<all_urls>"
