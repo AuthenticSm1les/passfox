@@ -82,7 +82,8 @@ Nova, swaps Mozilla branding and Firefox-only `page-icon:` favicons for
 passfox's, gives `context-fill` icons light and dark colours, and hides the
 menu items for importing, exporting and removing everything. Its `PATCHES`
 list holds passfox's few changes to Firefox's own code (such as letting the
-website address be edited on existing logins); each must match exactly once,
+website address be edited on existing logins, or removing Lit's `innerHTML`
+fallback, which AMO's validator flags); each must match exactly once,
 so a Firefox update that changes that code stops the script.
 
 Two small files stand in for Firefox's internals:
@@ -137,7 +138,7 @@ For each release, bump `version` in `extension/manifest.json`, commit, and
 push a matching tag:
 
 ```sh
-git tag v0.5.0 && git push origin v0.5.0
+git tag v0.5.1 && git push origin v0.5.1
 ```
 
 The AUR package ([`passfox-host`](https://aur.archlinux.org/packages/passfox-host))

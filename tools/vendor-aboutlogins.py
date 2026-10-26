@@ -54,6 +54,15 @@ ICON_STROKE = "<style>svg{stroke:#15141a}@media (prefers-color-scheme: dark){svg
 # passfox's changes to Firefox's code, applied after copying (each must match
 # exactly once, so a Firefox update that changes the code fails loudly).
 PATCHES = {
+    # Firefox's Lit already builds templates with DOMParser in a browser; its
+    # server-side fallback assigns innerHTML, which AMO's validator flags. The
+    # fallback can't run in an extension page, so it becomes an error.
+    "global/content/vendor/lit.all.mjs": [
+        (
+            "        // SSR mode.\n        const el = d.createElement('template');\n        el.innerHTML = html;\n        return el;",
+            "        // passfox: always rendered in a browser, where DOMParser exists.\n        throw new Error('lit: DOMParser is required');",
+        ),
+    ],
     "browser/content/aboutlogins/components/login-item.mjs": [
         # The website address can be edited on existing logins, not only on
         # new ones (pass entries are renamed to match).

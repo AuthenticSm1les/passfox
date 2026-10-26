@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Lint the extension with Mozilla's addons-linter, the way AMO does.
 
-Fails on any error or warning except the known ones listed below, which come
-from code vendored from Firefox and are reviewed there.
+Fails on any error or warning, except known ones listed below (none at the
+moment: Lit's innerHTML fallback is patched out when vendoring).
 Usage: tools/lint.py
 """
 
@@ -12,10 +12,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-ALLOWED = {
-    # Lit builds its templates from its own static strings.
-    ("UNSAFE_VAR_ASSIGNMENT", "vendor/firefox/chrome/global/content/vendor/lit.all.mjs"),
-}
+ALLOWED = set()
 
 out = subprocess.run(
     ["npx", "--yes", "addons-linter@latest", "--output", "json", str(ROOT / "extension")],

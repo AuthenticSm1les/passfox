@@ -1590,10 +1590,8 @@ class Template {
             const doc = __moz_domParser.parseFromString(`<template>${html}</template>`, 'text/html');
             return document.importNode(doc.querySelector('template'), true);
         }
-        // SSR mode.
-        const el = d.createElement('template');
-        el.innerHTML = html;
-        return el;
+        // passfox: always rendered in a browser, where DOMParser exists.
+        throw new Error('lit: DOMParser is required');
     }
 }
 function resolveDirective(part, value, parent = part, attributeIndex) {
