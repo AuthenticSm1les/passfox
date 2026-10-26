@@ -34,7 +34,9 @@
 
   /** A pass entry as the vanilla login object about:logins works with. */
   function toLogin(entry, details = {}) {
-    const host = entry.domain ?? entry.path.split("/")[1];
+    // A login whose folder isn't a website is titled after its folder.
+    const parts = entry.path.split("/");
+    const host = entry.domain ?? parts.at(-2) ?? parts[0];
     let origin = entry.domain ? `https://${entry.domain}` : "";
     if (details.url) {
       try {

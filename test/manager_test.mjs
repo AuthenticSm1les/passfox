@@ -41,6 +41,9 @@ function sendNativeMessage(_name, message) {
 const ORIGIN = "moz-extension://test/";
 let listener;
 const lifecycle = [];
+// passfox's preferences: these tests use a www/ login folder until the end.
+let settings = { loginDir: "www" };
+const storageListeners = [];
 let passwordSaving = { value: true, levelOfControl: "controllable_by_this_extension" };
 const browser = {
   runtime: {
@@ -64,7 +67,15 @@ const browser = {
   },
   storage: {
     session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
-    local: { get: async () => ({}), set: async () => {} },
+    local: {
+      get: async defaults => ({ ...(typeof defaults == "object" ? defaults : {}), ...settings }),
+      set: async items => {
+        const changes = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, { oldValue: settings[k], newValue: v }]));
+        settings = { ...settings, ...items };
+        storageListeners.forEach(fn => fn(changes, "local"));
+      },
+    },
+    onChanged: { addListener: fn => storageListeners.push(fn) },
   },
   tabs: { onRemoved: { addListener() {} } },
   action: {},
@@ -132,6 +143,15 @@ try {
   reply = await send("manager-remove", { path: "misc/token" });
   assert.ok(reply.error);
   assert.equal(run("pass", ["show", "misc/token"]), "secret\n");
+
+  // The default login folder is the store root: every entry is a login,
+  // and new ones are saved at the top level.
+  await browser.storage.local.set({ loginDir: "" });
+  reply = await send("manager-list");
+  assert.deepEqual(reply.result.map(e => e.path).sort(), ["misc/token", "www/github.com/alice2"]);
+  reply = await send("manager-create", { origin: "https://root.test", username: "ann", password: "pw" });
+  assert.equal(reply.result.path, "root.test/ann");
+  assert.equal(run("pass", ["show", "root.test/ann"]), "pw\nlogin: ann\nurl: https://root.test\n");
 
   console.log("manager tests passed");
 } finally {

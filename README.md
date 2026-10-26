@@ -24,7 +24,8 @@ only connects it to Firefox.
 
 - Firefox 142 or newer, on Linux or another unix-like system
 - [pass](https://www.passwordstore.org/) with your logins stored as
-  `www/<website>/<username>` (see [Your store](#your-store))
+  `<website>/<username>`, at the top of your store or in a folder of your
+  choice (see [Your store](#your-store))
 - Python 3
 - To copy passwords: `wl-copy` (Wayland) or `xclip` (X11), the same tools
   pass uses for `pass show -c`
@@ -127,12 +128,17 @@ favicon history.
 
 ## Your store
 
-passfox reads website logins from the `www/` folder of your store, one entry
-per login:
+passfox reads website logins as `<website>/<username>`, one entry per login.
+By default they're at the top of your store; if you keep them in a folder,
+such as `www/`, set it in passfox's [preferences](#settings) under
+**Folder with website logins**:
 
 ```
+github.com/alice              → user alice on github.com
+accounts.example.com/sam      → user sam on accounts.example.com
+
+with the folder set to www:
 www/github.com/alice          → user alice on github.com
-www/accounts.example.com/sam  → user sam on accounts.example.com
 ```
 
 Logins for a site's subdomains are offered too, for example
@@ -150,9 +156,11 @@ url: https://github.com
 When passfox updates an entry, only the password line changes; every other
 line is kept.
 
-**Everything outside `www/` is left alone.** Tokens, TOTP seeds, keys and
-notes elsewhere in your store are never shown, decrypted, copied or changed by
-passfox.
+**With a login folder set, everything outside it is left alone.** Tokens,
+TOTP seeds, keys and notes elsewhere in your store are never shown, decrypted,
+copied or changed by passfox. Without one, the whole store is passfox's to
+read, so entries whose first folder isn't a website show up in the passwords
+page too (they're never offered on a site).
 
 ## Settings
 
@@ -163,15 +171,14 @@ password settings:
 - **Ask to save passwords**, with **Exceptions…** for the sites you chose
   *Never save* on,
 - **Suggest strong passwords** on sign-up and change-password forms,
-- **Manage saved passwords**, which opens the passwords page.
+- **Manage saved passwords**, which opens the passwords page,
+- **Folder with website logins** in your store (see [Your store](#your-store));
+  empty means the whole store.
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and
 `PASSWORD_STORE_CLIP_TIME`, as long as they're set in the environment Firefox
 starts in.
-
-If your logins live somewhere other than `www/`, set `PASSFOX_LOGIN_DIRS` to
-the folder names, separated by colons (for example `www:web`).
 
 ## Privacy
 
@@ -185,7 +192,8 @@ travel between Firefox and the helper on your computer.
 
 **No dropdown appears.** Check that the helper is installed: the passfox
 toolbar panel says *Can't reach pass* when it isn't. Also check that the
-site's logins are in `www/<website>/…`.
+site's logins are stored as `<website>/<username>` inside the folder set in
+passfox's preferences.
 
 **The save prompt hangs from the puzzle piece.** Pin passfox to the toolbar
 (see [Install](#install)).

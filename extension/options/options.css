@@ -67,3 +67,21 @@ h2 {
     padding-block: var(--space-xsmall);
   }
 }
+
+h2.section {
+  margin-block-start: var(--space-xlarge);
+}
+
+.setting.folder {
+  justify-content: flex-start;
+
+  input {
+    flex: 1;
+    max-width: 20em;
+    margin: 0;
+  }
+}
+
+.error {
+  color: var(--text-color-error);
+}

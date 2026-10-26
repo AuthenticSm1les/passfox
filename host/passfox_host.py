@@ -16,12 +16,10 @@ PASS = shutil.which("pass") or "/usr/bin/pass"
 HOSTNAME_RE = re.compile(r"^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z0-9-]+(:\d+)?$|^localhost(:\d+)?$", re.I)
 USERNAME_KEYS = ("login", "username", "user", "email")
 URL_KEYS = ("url", "website", "site")
-# Top-level folders that hold secrets other than site logins (TOTP seeds,
-# FIDO2 keys); they are listed but never offered for a website.
-# Top-level folders holding website logins, as www/<domain>/<username>.
-# Nothing outside them is listed, read or written: other folders hold
-# secrets that aren't website passwords (tokens, TOTP seeds, keys).
-LOGIN_DIRS = set(filter(None, os.environ.get("PASSFOX_LOGIN_DIRS", "www").split(":")))
+# The folder holding website logins as <domain>/<username>, chosen in
+# passfox's preferences and sent with every request ("" is the store root).
+# Nothing outside it is listed, read or written.
+BASE = ""
 # Entries made by "Use a Securely Generated Password" before a username is
 # known; they count as having no username until adopted.
 GENERATED_PREFIX = "passfox-generated-"
@@ -42,6 +40,14 @@ def send_message(obj):
     sys.stdout.buffer.flush()
 
 
+def set_base(value):
+    global BASE
+    base = (value or "").strip("/")
+    if base and any(p in ("", ".", "..") or p.startswith("-") for p in base.split("/")):
+        raise ValueError("invalid login folder")
+    BASE = base
+
+
 def check_path(path, must_exist=True):
     """Return path if it is a safe entry name inside the store, else raise."""
     if not isinstance(path, str) or not path or path.startswith(("/", "-")):
@@ -49,8 +55,9 @@ def check_path(path, must_exist=True):
     parts = path.split("/")
     if any(p in ("", ".", "..") or p.startswith("-") for p in parts):
         raise ValueError("invalid entry path")
-    if len(parts) < 2 or parts[0] not in LOGIN_DIRS:
-        raise ValueError("not a login entry (outside " + ", ".join(sorted(LOGIN_DIRS)) + ")")
+    prefix = BASE + "/" if BASE else ""
+    if not path.startswith(prefix) or path == BASE:
+        raise ValueError(f"not a login entry (outside {BASE}/)")
     full = os.path.realpath(os.path.join(STORE, path + ".gpg"))
     if not full.startswith(STORE + os.sep):
         raise ValueError("entry outside password store")
@@ -61,9 +68,9 @@ def check_path(path, must_exist=True):
 
 def describe(path):
     """Map an entry path onto Firefox's site + username model."""
-    parts = path.split("/")
-    if HOSTNAME_RE.match(parts[1]):
-        domain, username = parts[1].lower(), "/".join(parts[2:])
+    parts = (path[len(BASE) + 1:] if BASE else path).split("/")
+    if HOSTNAME_RE.match(parts[0]):
+        domain, username = parts[0].lower(), "/".join(parts[1:])
     else:
         # A login whose folder isn't a hostname: listed, never matched.
         domain, username = None, parts[-1]
@@ -73,10 +80,7 @@ def describe(path):
 
 
 def cmd_list(_msg):
-    entries = []
-    for top in sorted(LOGIN_DIRS):
-        entries += list_dir(os.path.join(STORE, top))
-    return {"entries": entries}
+    return {"entries": list_dir(os.path.join(STORE, BASE) if BASE else STORE)}
 
 
 def list_dir(top):
@@ -274,6 +278,7 @@ def main():
         handler = COMMANDS.get(msg.get("action"))
         if handler is None:
             raise ValueError(f"unknown action {msg.get('action')!r}")
+        set_base(msg.get("dir"))
         send_message(handler(msg))
     except Exception as exc:  # report every failure back to the extension
         send_message({"error": str(exc)})

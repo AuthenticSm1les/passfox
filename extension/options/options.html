@@ -31,6 +31,20 @@
       <label><input type="checkbox" id="suggest-passwords" /> Suggest strong passwords</label>
     </div>
 
+    <h2 class="section">Password store</h2>
+    <div class="setting folder">
+      <label for="login-dir">Folder with website logins</label>
+      <input type="text" id="login-dir" placeholder="Password store root" spellcheck="false" autocomplete="off" aria-describedby="login-dir-help login-dir-error" />
+    </div>
+    <p id="login-dir-help" class="description">
+      passfox reads logins stored as <code>&lt;website&gt;/&lt;username&gt;</code>
+      inside this folder (for example <code>www</code> for
+      <code>www/github.com/alice</code>), and saves new ones there. Entries
+      elsewhere in your store are left alone. Leave it empty to use the whole
+      store.
+    </p>
+    <p id="login-dir-error" class="error" hidden></p>
+
     <p class="description note">
       Firefox’s own “Ask to save passwords” is turned off while passfox is
       installed, so you’re only asked once. Passwords are saved to pass, with

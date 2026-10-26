@@ -15,8 +15,10 @@ import tempfile
 HOST = pathlib.Path(__file__).resolve().parent.parent / "host" / "passfox_host.py"
 
 
-def ask(env, message):
-    data = json.dumps(message).encode()
+def ask(env, message, dir="www"):
+    """Send one request; dir is the login folder from passfox's preferences
+    (these tests mostly use a www/ layout)."""
+    data = json.dumps({"dir": dir, **message}).encode()
     out = subprocess.run(
         [sys.executable, "-I", str(HOST)],
         input=struct.pack("@I", len(data)) + data,
@@ -67,14 +69,26 @@ def main():
         assert isinstance(alice.pop("modified"), int), alice
         assert alice == {"path": "www/github.com/alice", "domain": "github.com", "username": "alice"}, alice
         assert by_path["www/example.co.uk/bob@example.co.uk"]["domain"] == "example.co.uk"
-        # Only www/ holds logins: tokens and TOTP seeds elsewhere are
-        # neither listed nor readable through passfox.
+        # With the login folder set to www, tokens and TOTP seeds elsewhere
+        # are neither listed nor readable through passfox.
         assert all(p.startswith("www/") for p in by_path), sorted(by_path)
         assert by_path["www/Forum/dave"] == {**by_path["www/Forum/dave"], "domain": None, "username": "dave"}
         for outside in ("misc/git/github.com", "otp/github.com", "misc/notes"):
             assert "error" in ask(env, {"action": "get", "path": outside}), outside
             assert "error" in ask(env, {"action": "clip", "path": outside}), outside
         assert "error" in ask(env, {"action": "insert", "path": "misc/x", "username": "a", "password": "b"})
+
+        # The default login folder is the store root: every entry, with the
+        # site taken from the first folder.
+        root = {e["path"]: e for e in ask(env, {"action": "list"}, dir="")["entries"]}
+        assert {"misc/notes", "otp/github.com", "www/github.com/alice"} <= set(root), sorted(root)
+        assert root["www/github.com/alice"]["domain"] is None  # "www" isn't a site
+        assert ask(env, {"action": "get", "path": "misc/notes"}, dir="")["password"] == "nothing"
+        # A nested folder works too, and bad folders are refused.
+        nested = ask(env, {"action": "list"}, dir="misc/git")["entries"]
+        assert [(e["path"], e["domain"], e["username"]) for e in nested] == [("misc/git/github.com", "github.com", "")], nested
+        for bad in ("../x", "www/../misc", "-x"):
+            assert "error" in ask(env, {"action": "list"}, dir=bad), bad
 
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})
         assert got == {"password": "s3cret", "username": "alice", "url": "https://github.com"}, got

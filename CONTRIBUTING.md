@@ -44,8 +44,9 @@ With the add-on loaded, the index lists eight scenarios: basic form,
 identifier-first, script-built form, change password, sign-up, edge
 positions, hostile page styles, and a login inside an iframe. Each page says
 what to check. Form posts are thrown away and redirected to a welcome page.
-Saving a login there writes `www/localhost/<user>` to your store; remove it
-afterwards with `pass rm -r www/localhost` (and `www/auth.localhost`).
+Saving a login there writes `localhost/<user>` (inside your login folder) to
+your store; remove it afterwards with `pass rm -r` on that folder (and
+`auth.localhost`).
 
 ## How the UI copies Firefox
 

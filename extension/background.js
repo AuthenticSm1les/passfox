@@ -15,8 +15,26 @@ const MULTI_LABEL_SUFFIXES = new Set([
 let listCache = null;
 let cssCache = null;
 
+// The folder holding website logins, from passfox's preferences ("" is the
+// password store root). Every native request carries it, and the host keeps
+// to it: nothing outside is listed, read or written.
+let loginDir = "";
+const settingsReady = browser.storage.local
+  .get({ loginDir: "" })
+  .then(settings => (loginDir = settings.loginDir ?? ""));
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area == "local" && changes.loginDir) {
+    loginDir = changes.loginDir.newValue ?? "";
+    listCache = null;
+  }
+});
+
+function inLoginDir(path) {
+  return loginDir ? `${loginDir}/${path}` : path;
+}
+
 async function native(message) {
-  const response = await browser.runtime.sendNativeMessage(NATIVE_HOST, message);
+  const response = await browser.runtime.sendNativeMessage(NATIVE_HOST, { dir: loginDir, ...message });
   if (response?.error) {
     throw new Error(response.error);
   }
@@ -140,7 +158,7 @@ function isGeneratedPath(path) {
 
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
-  return `www/${host}/${name}`;
+  return inLoginDir(`${host}/${name}`);
 }
 
 async function neverSaveHosts() {
@@ -313,7 +331,7 @@ const handlers = {
     const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
     const result = await native({
       action: "generate",
-      path: `www/${host}/${GENERATED_PREFIX}${stamp}`,
+      path: inLoginDir(`${host}/${GENERATED_PREFIX}${stamp}`),
       url: originOf(sender.url),
     });
     listCache = null;
@@ -434,7 +452,7 @@ browser.runtime.onMessage.addListener((msg, sender) => {
   if (!handler) {
     return undefined;
   }
-  return Promise.resolve(handler(msg, sender)).then(
+  return settingsReady.then(() => handler(msg, sender)).then(
     result => ({ result }),
     error => ({ error: String(error?.message ?? error), existingLoginGuid: error?.existingLoginGuid })
   );
