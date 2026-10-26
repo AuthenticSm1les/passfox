@@ -106,6 +106,22 @@ def main():
         assert gen["entry"]["domain"] is None and gen["entry"]["username"] == "", gen
         assert ask(env, {"action": "adopt", "from": "sites/passfox-generated/example.com/1", "to": "sites/example.com", "username": "erin", "url": "https://example.com"}, dir="sites", layout="{site}")["ok"]
         assert raw("sites/example.com") == gen["password"] + "\nurl: https://example.com\nlogin: erin\n", raw("sites/example.com")
+        # "auto": any layout inside the folder, never outside it.
+        insert("mixed/github.com/alice", "pw\n")
+        insert("mixed/example.org", "pw\nlogin: fay\n")
+        insert("mixed/gus@example.net", "pw\n")
+        insert("mixed/personal/example.com/hal", "pw\n")
+        insert("mixed/notes/recovery-codes", "pw\n")
+        auto = {e["path"]: (e["domain"], e["username"]) for e in ask(env, {"action": "list"}, dir="mixed", layout="auto")["entries"]}
+        assert auto == {
+            "mixed/github.com/alice": ("github.com", "alice"),
+            "mixed/example.org": ("example.org", ""),
+            "mixed/gus@example.net": ("example.net", "gus"),
+            "mixed/personal/example.com/hal": ("example.com", "hal"),
+            "mixed/notes/recovery-codes": (None, "recovery-codes"),
+        }, auto
+        assert "error" in ask(env, {"action": "get", "path": "misc/notes"}, dir="mixed", layout="auto")
+
         # {url} is the same placeholder as {site}.
         url_named = ask(env, {"action": "list"}, dir="names", layout="{username}@{url}")["entries"]
         assert ("example.org", "bob") in [(e["domain"], e["username"]) for e in url_named], url_named

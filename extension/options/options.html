@@ -38,19 +38,25 @@
     </div>
     <div id="login-pattern-help" class="description">
       <p>
-        Each login is one entry in your password store, named with this
-        pattern: <code>{url}</code> is the website and <code>{username}</code>
-        the username. For example:
+        A folder in your password store, like <code>www</code>: passfox
+        recognises logins in any layout inside it and saves new ones as
+        <code>&lt;website&gt;/&lt;username&gt;</code>:
+      </p>
+      <ul class="examples">
+        <li><code>www/github.com/alice</code>, <code>www/alice@github.com</code>, <code>www/github.com</code> (username on its <code>login:</code> line)</li>
+      </ul>
+      <p>
+        Or an exact pattern, with <code>{url}</code> for the website and
+        <code>{username}</code> for the username:
       </p>
       <ul class="examples">
         <li><code>{url}/{username}</code> → <code>example.com/alex@email.com</code></li>
         <li><code>www/{url}/{username}</code> → <code>www/example.com/alex@email.com</code></li>
         <li><code>{username}@{url}</code> → <code>alex@email.com@example.com</code></li>
-        <li><code>www/{url}</code> → <code>www/example.com</code>, one login per website, with the username on its <code>login:</code> line</li>
+        <li><code>www/{url}</code> → <code>www/example.com</code>, one login per website</li>
       </ul>
       <p>
-        Folders before <code>{url}</code> (like <code>www</code>) are where
-        passfox works: entries elsewhere in your store are left alone.
+        Entries outside the folder (before <code>{url}</code>) are left alone.
       </p>
     </div>
     <p id="login-pattern-error" class="error" hidden></p>

@@ -171,6 +171,17 @@ try {
   assert.equal(reply.result.path, "sites/example.net");
   assert.equal(run("pass", ["show", "sites/example.net"]), "pw-dan-2\nlogin: dana\nurl: https://example.net\n");
 
+  // Just a folder: any layout inside it is recognised, nothing outside.
+  run("pass", ["insert", "-m", "www/carol@example.org"], "pw-carol\n");
+  await browser.storage.local.set({ loginPattern: "www" });
+  reply = await send("manager-list");
+  assert.deepEqual(
+    reply.result.map(e => [e.path, e.domain, e.username]).sort(),
+    [["www/carol@example.org", "example.org", "carol"], ["www/github.com/alice2", "github.com", "alice2"]]
+  );
+  reply = await send("manager-create", { origin: "https://auto.test", username: "ivy", password: "pw" });
+  assert.equal(reply.result.path, "www/auto.test/ivy");
+
   console.log("manager tests passed");
 } finally {
   spawnSync("gpgconf", ["--kill", "gpg-agent"], { env });

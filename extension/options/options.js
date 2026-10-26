@@ -71,17 +71,18 @@ load();
 
 // Same rules as the native host: {url} (or {site}) once, {username} at most
 // once, no other placeholders, and every part a plain name in the store.
+// A plain folder (no placeholders) is fine too: any layout inside it.
 function patternProblem(value) {
   const placeholders = value.match(/\{[^}]*\}/g) ?? [];
   const count = (...names) => placeholders.filter(p => names.includes(p)).length;
-  if (count("{url}", "{site}") != 1) {
+  if (placeholders.length && count("{url}", "{site}") != 1) {
     return "Include {url} once.";
   }
   if (count("{username}") > 1 || placeholders.some(p => !["{url}", "{site}", "{username}"].includes(p))) {
     return "Only {url} and {username} can be used, each once.";
   }
   if (value.split("/").some(part => !part || part == "." || part == ".." || part.startsWith("-"))) {
-    return "Use names inside your password store, like www/{url}/{username}.";
+    return "Use a folder inside your password store, like www, or a pattern like www/{url}/{username}.";
   }
   return null;
 }

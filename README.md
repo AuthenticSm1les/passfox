@@ -129,21 +129,31 @@ favicon history.
 ## Your store
 
 passfox reads website logins as one entry per login, named after the
-website. The **Where logins are stored** [preference](#settings) is a pattern
-from the top of your store, with `{url}` for the website and `{username}` for
-the username (default `{url}/{username}`):
+website. The **Where logins are stored** [preference](#settings) says where:
 
-```
-{url}/{username}        example.com/alex@email.com
-www/{url}/{username}    www/example.com/alex@email.com
-{username}@{url}        alex@email.com@example.com
-www/{url}               www/example.com   (one login per website; username from its login: line)
-```
+- **A folder**, like `www`: passfox recognises logins in any layout inside it
+  and saves new ones as `<website>/<username>`:
 
-New logins are saved with the same pattern. With `{url}/{username}`, an entry
-named just after the website (`example.com`) counts too, with the username
-from its `login:` line. Folders before `{url}`, like `www`, are where passfox
-works.
+  ```
+  www/github.com/alice        → alice on github.com
+  www/alice@github.com        → alice on github.com
+  www/github.com              → github.com, username from its login: line
+  www/personal/github.com/bob → bob on github.com
+  ```
+
+- **An exact pattern**, with `{url}` for the website and `{username}` for the
+  username (the default is `{url}/{username}`):
+
+  ```
+  {url}/{username}        example.com/alex@email.com
+  www/{url}/{username}    www/example.com/alex@email.com
+  {username}@{url}        alex@email.com@example.com
+  www/{url}               www/example.com   (one login per website)
+  ```
+
+New logins are saved with the pattern (or as `<website>/<username>` inside a
+folder). With `{url}/{username}`, an entry named just after the website also
+counts, with the username from its `login:` line.
 
 Logins for a site's subdomains are offered too, for example
 `gist.github.com` logins on `github.com`. If an entry has a `login:`,
@@ -160,8 +170,8 @@ url: https://github.com
 When passfox updates an entry, only the password line changes; every other
 line is kept.
 
-**With folders before `{url}` (like `www/{url}/{username}`), everything
-outside them is left alone.** Tokens, TOTP seeds, keys and notes elsewhere in
+**With a folder (like `www`, or `www/{url}/{username}`), everything outside
+it is left alone.** Tokens, TOTP seeds, keys and notes elsewhere in
 your store are never shown, decrypted, copied or changed by passfox. Without
 one, the whole store is passfox's to read, so entries that don't fit the
 pattern show up on the passwords page too (they're never offered on a site).
@@ -176,8 +186,9 @@ password settings:
   *Never save* on,
 - **Suggest strong passwords** on sign-up and change-password forms,
 - **Manage saved passwords**, which opens the passwords page,
-- **Where logins are stored**: the pattern for login entries in your store,
-  such as `www/{url}/{username}` (see [Your store](#your-store)).
+- **Where logins are stored**: a folder such as `www` (any layout inside it),
+  or an exact pattern such as `www/{url}/{username}` (see
+  [Your store](#your-store)).
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and

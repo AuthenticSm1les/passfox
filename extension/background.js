@@ -19,17 +19,26 @@ let cssCache = null;
 // store root with {url} (or {site}) and {username}, e.g. www/{url}/{username}.
 // Its plain folders before the first placeholder are the login folder: every
 // native request carries it, and the host lists, reads and writes nothing
-// outside it. The rest is how each login is named.
+// outside it. The rest is how each login is named. A plain folder (no
+// placeholders, e.g. "www") means: recognise any layout inside it, and name
+// new logins {url}/{username}.
 const DEFAULT_PATTERN = "{url}/{username}";
 let loginDir = "";
 let loginLayout = DEFAULT_PATTERN;
 
+const AUTO_LAYOUT = "auto";
+
 function applyPattern(pattern) {
   const parts = (pattern || DEFAULT_PATTERN).split("/");
   const first = parts.findIndex(part => part.includes("{"));
-  loginDir = parts.slice(0, first).join("/");
-  loginLayout = parts.slice(first).join("/");
+  loginDir = (first < 0 ? parts : parts.slice(0, first)).join("/");
+  loginLayout = first < 0 ? AUTO_LAYOUT : parts.slice(first).join("/");
   listCache = null;
+}
+
+/** How a new login is named inside the folder. */
+function namingLayout() {
+  return loginLayout == AUTO_LAYOUT ? DEFAULT_PATTERN : loginLayout;
 }
 
 // Earlier builds stored the folder and the name separately.
@@ -187,12 +196,12 @@ function isGeneratedPath(path) {
 /** The entry for a login, named by the pattern from passfox's preferences. */
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
-  return inLoginDir(loginLayout.replace(/\{(url|site)\}/, host).replace("{username}", name));
+  return inLoginDir(namingLayout().replace(/\{(url|site)\}/, host).replace("{username}", name));
 }
 
 function generatedPathFor(host) {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
-  return loginLayout.includes("{username}")
+  return namingLayout().includes("{username}")
     ? savePathFor(host, GENERATED_PREFIX + stamp)
     : inLoginDir(`${GENERATED_FOLDER}/${host}/${stamp}`);
 }

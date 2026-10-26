@@ -30,9 +30,16 @@ DEFAULT_LAYOUT = "{site}/{username}"
 LAYOUT = None
 
 
+# The layout value for "recognise any layout inside the folder".
+AUTO = "auto"
+
+
 def compile_layout(layout):
     """Turn a name pattern like "{url}/{username}" into a matcher with
-    "site" and (optionally) "username" groups ({site} is the same as {url})."""
+    "site" and (optionally) "username" groups ({site} is the same as {url}).
+    "auto" means any layout (see match_auto)."""
+    if layout == AUTO:
+        return AUTO
     layout = (layout or DEFAULT_LAYOUT).strip("/").replace("{url}", "{site}")
     pieces = re.split(r"(\{[a-z]+\})", layout)
     placeholders = [p for p in pieces if p.startswith("{")]
@@ -55,6 +62,20 @@ def compile_layout(layout):
     if optional_username:
         regex += "(?:/(?P<username>.+))?"
     return re.compile(f"^{regex}$")
+
+
+def match_auto(rel):
+    """Recognise a login in any common layout: the first part of its name
+    that is a website (github.com/alice, github.com, folders/github.com/alice)
+    or user@website (alice@github.com). Returns (site, username) or None."""
+    parts = rel.split("/")
+    for i, part in enumerate(parts):
+        if HOSTNAME_RE.match(part):
+            return part, "/".join(parts[i + 1:])
+        user, at, host = part.rpartition("@")
+        if at and user and HOSTNAME_RE.match(host):
+            return host, "/".join([user, *parts[i + 1:]])
+    return None
 
 
 def is_generated(path):
@@ -111,10 +132,14 @@ def check_path(path, must_exist=True):
 def describe(path):
     """Map an entry path onto Firefox's site + username model."""
     rel = path[len(BASE) + 1:] if BASE else path
-    match = (LAYOUT or compile_layout(None)).match(rel)
-    if match and HOSTNAME_RE.match(match["site"]):
-        domain = match["site"].lower()
-        username = match.groupdict().get("username") or ""
+    layout = LAYOUT or compile_layout(None)
+    if layout == AUTO:
+        found = match_auto(rel)
+    else:
+        match = layout.match(rel)
+        found = match and HOSTNAME_RE.match(match["site"]) and (match["site"], match.groupdict().get("username") or "")
+    if found:
+        domain, username = found[0].lower(), found[1]
     else:
         # Not named like a login (or the site isn't a hostname): listed on
         # the passwords page, never offered on a site.
