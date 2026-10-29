@@ -142,7 +142,7 @@ For each release, bump `version` in `extension/manifest.json`, commit, and
 push a matching tag:
 
 ```sh
-git tag v0.5.2 && git push origin v0.5.2
+git tag v0.6.0 && git push origin v0.6.0
 ```
 
 The AUR package ([`passfox-host`](https://aur.archlinux.org/packages/passfox-host))
