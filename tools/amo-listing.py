@@ -111,10 +111,11 @@ def main():
 
 
 def sync_screenshots(addon):
-    """Replace the screenshots so AMO matches amo/screenshots exactly."""
+    """Replace the screenshots so AMO matches amo/screenshots exactly.
+
+    The new ones go up before the old ones are removed, so being stopped by
+    AMO's rate limit part way leaves extra screenshots, never missing ones."""
     current = request("GET", addon).get("previews", [])
-    for preview in current:
-        request("DELETE", f"{addon}previews/{preview['id']}/")
     shots = json.loads((ROOT / "amo" / "screenshots" / "captions.json").read_text())
     for position, shot in enumerate(shots):
         created = request(
@@ -125,6 +126,8 @@ def sync_screenshots(addon):
         )
         if not DRY_RUN:
             request("PATCH", f"{addon}previews/{created['id']}/", json_body={"caption": {"en-US": shot["caption"]}})
+    for preview in current:
+        request("DELETE", f"{addon}previews/{preview['id']}/")
 
 
 if __name__ == "__main__":

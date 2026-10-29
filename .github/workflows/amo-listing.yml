@@ -28,7 +28,8 @@ jobs:
             changed=$(git diff --name-only "$BEFORE" HEAD)
             grep -q '^amo/metadata.json$' <<<"$changed" && parts="$parts text"
             grep -q '^amo/icon-128.png$' <<<"$changed" && parts="$parts icon"
-            grep -q '^amo/screenshots/' <<<"$changed" && parts="$parts screenshots"
+            # Only the images and captions, not stage.html that makes them.
+            grep -Eq '^amo/screenshots/(.*\.png|captions\.json)$' <<<"$changed" && parts="$parts screenshots"
             # A change to the script alone doesn't need any listing edits.
             [ -n "$parts" ] || parts="none"
           fi

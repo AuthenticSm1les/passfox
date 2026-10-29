@@ -49,6 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Already there when a failed run is re-run.
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && exit 0
           gh release create "$GITHUB_REF_NAME" "dist/passfox-host-$VERSION.tar.gz" \
             --title "passfox $VERSION" \
             --notes "Install passfox from addons.mozilla.org (https://addons.mozilla.org/firefox/addon/passfox/) once this version is approved, then install the native host: \`passfox-host\` from the AUR on Arch Linux, or run install.sh from passfox-host-$VERSION.tar.gz (or the repository)."
@@ -58,11 +60,20 @@ jobs:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
-          npx --yes web-ext@8 sign \
-            --source-dir extension \
-            --artifacts-dir dist \
-            --channel listed \
-            --amo-metadata amo/metadata.json \
-            --approval-timeout 0 \
-            --api-key "$AMO_JWT_ISSUER" \
-            --api-secret "$AMO_JWT_SECRET"
+          # AMO throttles uploads for a minute or so (for example while the
+          # listing workflow is editing); try again rather than fail.
+          set -o pipefail
+          for attempt in 1 2 3 4; do
+            npx --yes web-ext@8 sign \
+              --source-dir extension \
+              --artifacts-dir dist \
+              --channel listed \
+              --amo-metadata amo/metadata.json \
+              --approval-timeout 0 \
+              --api-key "$AMO_JWT_ISSUER" \
+              --api-secret "$AMO_JWT_SECRET" 2>&1 | tee sign.log && exit 0
+            grep -q "throttled" sign.log || exit 1
+            echo "AMO throttled the upload; trying again in 90s"
+            sleep 90
+          done
+          exit 1
