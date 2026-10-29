@@ -61,6 +61,24 @@
     </div>
     <p id="login-pattern-error" class="error" hidden></p>
 
+    <div class="setting folder">
+      <label for="otp-pattern">Where one-time codes are stored</label>
+      <input type="text" id="otp-pattern" placeholder="In each login’s entry" spellcheck="false" autocomplete="off" aria-describedby="otp-pattern-help otp-pattern-error" />
+    </div>
+    <div id="otp-pattern-help" class="description">
+      <p>
+        passfox fills two-step verification codes from <code>pass otp</code>
+        (pass-otp). Leave this empty when each login’s entry has its own
+        <code>otpauth://</code> line, or give a folder or pattern like the
+        one above for codes kept apart:
+      </p>
+      <ul class="examples">
+        <li><code>otp/{url}</code> → <code>otp/github.com</code></li>
+        <li><code>otp/{url}/{username}</code> → <code>otp/github.com/alice</code></li>
+      </ul>
+    </div>
+    <p id="otp-pattern-error" class="error" hidden></p>
+
     <p class="description note">
       Firefox’s own “Ask to save passwords” is turned off while passfox is
       installed, so you’re only asked once. Passwords are saved to pass, with

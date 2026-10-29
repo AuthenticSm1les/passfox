@@ -28,13 +28,26 @@ let loginLayout = DEFAULT_PATTERN;
 
 const AUTO_LAYOUT = "auto";
 
-function applyPattern(pattern) {
-  const parts = (pattern || DEFAULT_PATTERN).split("/");
+/** A pattern's folder (its plain parts before the first placeholder) and layout. */
+function splitPattern(pattern) {
+  const parts = pattern.split("/");
   const first = parts.findIndex(part => part.includes("{"));
-  loginDir = (first < 0 ? parts : parts.slice(0, first)).join("/");
-  loginLayout = first < 0 ? AUTO_LAYOUT : parts.slice(first).join("/");
+  return {
+    dir: (first < 0 ? parts : parts.slice(0, first)).join("/"),
+    layout: first < 0 ? AUTO_LAYOUT : parts.slice(first).join("/"),
+  };
+}
+
+function applyPattern(pattern) {
+  ({ dir: loginDir, layout: loginLayout } = splitPattern(pattern || DEFAULT_PATTERN));
   listCache = null;
 }
+
+// Where one-time codes are, from the preferences: "" means in each login's
+// own entry (an otpauth:// line, as pass-otp keeps them), otherwise a pattern
+// read like the logins one, such as otp/{url}. Codes always come from pass otp.
+let otpPattern = "";
+let otpCache = null;
 
 /** How a new login is named inside the folder. */
 function namingLayout() {
@@ -50,11 +63,18 @@ function patternFrom({ loginPattern, loginDir: dir, loginLayout: layout }) {
 }
 
 const settingsReady = browser.storage.local
-  .get(["loginPattern", "loginDir", "loginLayout"])
-  .then(settings => applyPattern(patternFrom(settings)));
+  .get(["loginPattern", "loginDir", "loginLayout", "otpPattern"])
+  .then(settings => {
+    applyPattern(patternFrom(settings));
+    otpPattern = settings.otpPattern ?? "";
+  });
 browser.storage.onChanged.addListener((changes, area) => {
   if (area == "local" && changes.loginPattern) {
     applyPattern(changes.loginPattern.newValue);
+  }
+  if (area == "local" && changes.otpPattern) {
+    otpPattern = changes.otpPattern.newValue ?? "";
+    otpCache = null;
   }
 });
 
@@ -127,14 +147,32 @@ function hostOf(url) {
 }
 
 /** Entries for a page, exact-host matches first, like Firefox's login list. */
-async function loginsForUrl(url) {
+/** Where one-time codes are read from: their own folder, or the logins'. */
+function otpLocation() {
+  return otpPattern ? splitPattern(otpPattern) : { dir: loginDir, layout: loginLayout };
+}
+
+async function otpEntries() {
+  if (!otpPattern) {
+    return allEntries();
+  }
+  const { dir, layout } = otpLocation();
+  const pattern = `${dir}\n${layout}`;
+  if (otpCache?.pattern !== pattern || Date.now() - otpCache.at > LIST_TTL_MS) {
+    const { entries } = await native({ action: "list", dir, layout });
+    otpCache = { at: Date.now(), pattern, entries };
+  }
+  return otpCache.entries;
+}
+
+async function loginsForUrl(url, source = allEntries) {
   const host = hostOf(url);
   if (!host) {
     return [];
   }
   const base = baseDomain(host);
   const matches = [];
-  for (const entry of await allEntries()) {
+  for (const entry of await source()) {
     if (!entry.domain) {
       continue;
     }
@@ -425,6 +463,20 @@ const handlers = {
       return loginsForUrl(sender.url);
     }
     return loginsForUrl(await tabUrl(msg.tabId));
+  },
+
+  // One-time code fields: the site's entries with codes (or, with codes kept
+  // in the logins themselves, the site's logins), and a code from pass otp.
+  otpEntries: async (msg, sender) =>
+    (await loginsForUrl(sender.url, otpEntries)).filter(e => !isGeneratedPath(e.path)),
+
+  async otp(msg, sender) {
+    const url = isExtensionPage(sender) ? await tabUrl(msg.tabId) : sender.url;
+    if (!(await loginsForUrl(url, otpEntries)).some(e => e.path === msg.path)) {
+      throw new Error("Entry does not belong to this site");
+    }
+    const clip = isExtensionPage(sender) && msg.clip;
+    return native({ action: "otp", path: msg.path, clip, ...otpLocation() });
   },
 
   async fill(msg, sender) {

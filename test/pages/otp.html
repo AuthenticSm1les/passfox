@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Two-step verification</title><link rel="stylesheet" href="site.css"></head>
+<body>
+<nav><a href="index.html">All tests</a></nav>
+<h1>Two-step verification</h1>
+<form method="post" action="/login">
+  <label>Authentication code <input id="app_totp" name="app_otp" autocomplete="one-time-code" inputmode="numeric" maxlength="6" autofocus></label>
+  <button>Verify</button>
+</form>
+<form method="post" action="/login">
+  <fieldset>
+    <legend>Code, one digit per box</legend>
+    <input name="otp1" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 1 of the verification code">
+    <input name="otp2" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 2 of the verification code">
+    <input name="otp3" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 3 of the verification code">
+    <input name="otp4" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 4 of the verification code">
+    <input name="otp5" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 5 of the verification code">
+    <input name="otp6" maxlength="1" inputmode="numeric" size="1" aria-label="Digit 6 of the verification code">
+  </fieldset>
+  <label>Promo code <input name="promo" maxlength="8"></label>
+  <button>Verify</button>
+</form>
+<div class="expect">
+<h2>What to check</h2>
+<ul>
+<li>Needs a one-time code for <code>localhost</code>: an <code>otpauth://</code> line in a
+localhost login, or an entry matching “Where one-time codes are stored” (for example
+<code>otp/localhost</code> with <code>otp/{url}</code>).</li>
+<li>The authentication code field is focused on load and its dropdown opens by itself,
+with “One-time code for this website” rows and Manage Passwords.</li>
+<li>Choosing a row fills the code from <code>pass otp</code> with the yellow highlight.</li>
+<li>In the per-digit boxes, choosing a row from the first box fills one digit per box.</li>
+<li>The promo code field gets no dropdown.</li>
+</ul>
+</div>
+</body>
+</html>

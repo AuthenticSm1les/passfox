@@ -40,9 +40,10 @@ then `about:debugging` → This Firefox → Load Temporary Add-on →
 python3 -I test/serve.py                  # http://localhost:8766/
 ```
 
-With the add-on loaded, the index lists eight scenarios: basic form,
+With the add-on loaded, the index lists nine scenarios: basic form,
 identifier-first, script-built form, change password, sign-up, edge
-positions, hostile page styles, and a login inside an iframe. Each page says
+positions, hostile page styles, a login inside an iframe, and two-step
+verification codes. Each page says
 what to check. Form posts are thrown away and redirected to a welcome page.
 Saving a login there writes `localhost/<user>` (inside your login folder) to
 your store; remove it afterwards with `pass rm -r` on that folder (and

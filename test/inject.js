@@ -35,6 +35,8 @@
             return { result: texts.join("\n") };
           }
           case "logins": return { result: logins };
+          case "otpEntries": return { result: [{ path: "otp/localhost", domain: "localhost", username: "", exact: true }] };
+          case "otp": return { result: { code: "492039" } };
           case "fill": return { result: { path: msg.path, username: msg.path.split("/").at(-1), password: "correct horse" } };
           case "generate":
             return { result: { path: "www/localhost/passfox-generated-20261023-120000", username: "", password: "Kq7#xR2!mVb9-Lp" } };

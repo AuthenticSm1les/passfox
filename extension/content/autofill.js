@@ -7,12 +7,15 @@
 
   const TEXT_TYPES = new Set(["text", "email", "url", "tel", "number", ""]);
   const USERNAME_HINT = /user|login|email|e-mail|identifier|account|signin/i;
+  // Names of one-time code fields that don't say autocomplete="one-time-code".
+  const OTP_HINT = /otp|one.?time|2fa|two.?factor|mfa|verification.?code|security.?code|auth.*code|passcode/i;
   const SUBMIT_TEXT = /log ?in|sign ?in|continue|next|submit|connexion|anmelden/i;
   // Firefox's :autofill highlight (layout/style/res/forms.css).
   const AUTOFILL_STYLE = "background-color: light-dark(rgb(255, 249, 145), rgb(255, 249, 145, 0.2)) !important; background-image: none !important; color: FieldText !important;";
 
   let logins = null;
   let loginsPromise = null;
+  let otpEntriesPromise = null;
   let popup = null; // { panel, list, field, rows, selected }
   let lastFill = null; // { path, password }
   let lastSubmit = { key: "", at: 0 };
@@ -154,6 +157,30 @@
     return isPasswordField(node) || isUsernameField(node);
   }
 
+  /** A field for a one-time code, including one box of a code split per digit. */
+  function isOtpField(node) {
+    if (!isTextField(node) || node.type == "email" || node.type == "url") {
+      return false;
+    }
+    const autocomplete = (node.autocomplete || "").toLowerCase();
+    if (/\bone-time-code\b/.test(autocomplete)) {
+      return true;
+    }
+    if (/\b(username|email|cc-|new-password|current-password)/.test(autocomplete)) {
+      return false;
+    }
+    if (node.maxLength > 10 || (node.maxLength > 1 && node.maxLength < 4)) {
+      return false;
+    }
+    const names = `${node.name} ${node.id} ${node.placeholder} ${node.getAttribute("aria-label") ?? ""}`;
+    return OTP_HINT.test(names) && !passwordFieldFor(node);
+  }
+
+  /** Fields passfox offers a dropdown on. */
+  function isAssistedField(node) {
+    return isOtpField(node) || isLoginField(node);
+  }
+
   // A light stand-in for Firefox's Fathom new-password model: an explicit
   // autocomplete="new-password", or the new password of a sign-up form
   // (password, confirm) or a change form (current, new, confirm).
@@ -187,6 +214,15 @@
         return [];
       });
     return loginsPromise;
+  }
+
+  function getOtpEntries() {
+    otpEntriesPromise ??= call("otpEntries").catch(error => {
+      console.warn("passfox:", error.message);
+      otpEntriesPromise = null;
+      return [];
+    });
+    return otpEntriesPromise;
   }
 
   function matchesFor(field) {
@@ -329,6 +365,9 @@
   // forceGenerated: from "Suggest Strong Password…", which offers a generated
   // password on any password field.
   async function openPopup(field, { forceGenerated = false } = {}) {
+    if (isOtpField(field)) {
+      return openOtpPopup(field);
+    }
     await getLogins();
     if (document.activeElement !== field) {
       return;
@@ -362,15 +401,43 @@
       );
     }
     if (showFooter) {
-      rows.push(
-        buildRow({
-          label: "Manage Passwords",
-          footer: true,
-          onActivate: () => call("openManager", {}),
-        })
-      );
+      rows.push(manageRow());
     }
+    await showRows(field, rows);
+  }
 
+  function manageRow() {
+    return buildRow({
+      label: "Manage Passwords",
+      footer: true,
+      onActivate: () => call("openManager", {}),
+    });
+  }
+
+  // One-time code fields list the site's codes from pass otp, in the same
+  // dropdown (Firefox itself has no one-time codes to offer).
+  async function openOtpPopup(field) {
+    const entries = await getOtpEntries();
+    if (document.activeElement !== field || field.value) {
+      return;
+    }
+    if (!entries.length) {
+      closePopup();
+      return;
+    }
+    const icons = await siteIcons(entries.length);
+    const rows = entries.map((entry, i) =>
+      buildRow({
+        label: entry.username || entry.domain,
+        description: entry.exact ? "One-time code for this website" : `One-time code for ${entry.domain}`,
+        iconNode: icons[i],
+        onActivate: () => fillOtp(entry, field),
+      })
+    );
+    await showRows(field, [...rows, manageRow()]);
+  }
+
+  async function showRows(field, rows) {
     const shadow = await root();
     if (!popup) {
       const list = el("div", { class: "richlistbox", role: "listbox" });
@@ -466,6 +533,22 @@
     }
   }
 
+  // A code split into one box per digit is filled box by box.
+  async function fillOtp(entry, field) {
+    try {
+      const { code } = await call("otp", { path: entry.path });
+      const boxes = visibleInputs(scopeOf(field), n => isTextField(n) && n.maxLength == 1);
+      const from = boxes.indexOf(field);
+      if (field.maxLength == 1 && from >= 0 && boxes.length - from >= code.length) {
+        [...code].forEach((digit, i) => setValue(boxes[from + i], digit));
+      } else {
+        setValue(field, code);
+      }
+    } catch (error) {
+      console.warn("passfox:", error.message);
+    }
+  }
+
   // pass generates and stores the password; fill it and its confirmation.
   async function fillGenerated(field) {
     try {
@@ -526,7 +609,7 @@
         unmask(field);
         return;
       }
-      if (isLoginField(field) && popupDismissedFor !== field) {
+      if (isAssistedField(field) && popupDismissedFor !== field) {
         openPopup(field);
       }
     },
@@ -550,7 +633,7 @@
     "mousedown",
     e => {
       const field = e.composedPath()[0];
-      if (e.button !== 0 || !isLoginField(field) || document.activeElement !== field) {
+      if (e.button !== 0 || !isAssistedField(field) || document.activeElement !== field) {
         return;
       }
       if (popupOpenFor(field)) {
@@ -579,8 +662,8 @@
           generatedFields.set(field, field.value);
         }
       }
-      // Typing a password hides the popup; typing a username filters it.
-      if (isPasswordField(field)) {
+      // Typing a password or code hides the popup; typing a username filters it.
+      if (isPasswordField(field) || isOtpField(field)) {
         closePopup();
       } else if (isUsernameField(field)) {
         openPopup(field);
@@ -593,7 +676,7 @@
     "keydown",
     e => {
       const field = e.composedPath()[0];
-      if (!isLoginField(field)) {
+      if (!isAssistedField(field)) {
         return;
       }
       const open = popupOpenFor(field);
@@ -649,6 +732,11 @@
 
   addEventListener("scroll", () => positionPopup(), { capture: true, passive: true });
   addEventListener("resize", () => positionPopup(), { passive: true });
+
+  // Two-step sign-in pages focus the code field before passfox has loaded.
+  if (isOtpField(document.activeElement)) {
+    openPopup(document.activeElement);
+  }
 
   /* ::::: submission capture ::::: */
 

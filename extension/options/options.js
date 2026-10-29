@@ -8,6 +8,8 @@ const list = document.getElementById("exception-list");
 const removeAll = document.getElementById("remove-all");
 const loginPattern = document.getElementById("login-pattern");
 const loginPatternError = document.getElementById("login-pattern-error");
+const otpPattern = document.getElementById("otp-pattern");
+const otpPatternError = document.getElementById("otp-pattern-error");
 const DEFAULT_PATTERN = "{url}/{username}";
 
 async function load() {
@@ -18,6 +20,7 @@ async function load() {
     loginPattern: "",
     loginDir: "",
     loginLayout: "",
+    otpPattern: "",
   });
   askToSave.checked = settings.askToSave;
   if (document.activeElement != loginPattern) {
@@ -26,6 +29,9 @@ async function load() {
       settings.loginPattern ||
       [settings.loginDir, settings.loginLayout || (settings.loginDir ? DEFAULT_PATTERN : "")].filter(Boolean).join("/") ||
       DEFAULT_PATTERN;
+  }
+  if (document.activeElement != otpPattern) {
+    otpPattern.value = settings.otpPattern;
   }
   suggest.checked = settings.suggestPasswords;
   renderExceptions(settings.neverSave);
@@ -96,5 +102,17 @@ loginPattern.addEventListener("change", () => {
     loginPattern.value = value;
     browser.storage.local.set({ loginPattern: value });
     browser.storage.local.remove?.(["loginDir", "loginLayout"]);
+  }
+});
+
+// Empty means each login's own entry.
+otpPattern.addEventListener("change", () => {
+  const value = otpPattern.value.trim().replace(/^\/+|\/+$/g, "");
+  const problem = value ? patternProblem(value) : null;
+  otpPatternError.hidden = !problem;
+  otpPatternError.textContent = problem ?? "";
+  if (!problem) {
+    otpPattern.value = value;
+    browser.storage.local.set({ otpPattern: value });
   }
 });

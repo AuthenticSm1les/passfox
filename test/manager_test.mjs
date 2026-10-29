@@ -251,6 +251,24 @@ try {
   assert.ok(!("pending-7" in session));
   assert.equal(JSON.stringify(settings.inPageSaves), "{}");
 
+  // One-time codes: from their own folder when "Where one-time codes are
+  // stored" is set, and only for the site asking.
+  run("pass", ["insert", "-m", "otp/auto.test"], "otpauth://totp/auto.test:ivy?secret=JBSWY3DPEHPK3PXP\n");
+  await browser.storage.local.set({ otpPattern: "otp/{url}" });
+  reply = await send("otpEntries", {}, site);
+  assert.equal(JSON.stringify(reply.result.map(e => e.path)), JSON.stringify(["otp/auto.test"]));
+  reply = await send("otp", { path: "otp/auto.test" }, site);
+  assert.match(reply.result.code, /^\d{6}$/);
+  reply = await send("otp", { path: "otp/auto.test" }, { ...site, url: "https://other.test/" });
+  assert.match(reply.error, /belong/);
+  // Kept in the logins themselves: the site's logins are offered, and a
+  // login without an otpauth:// line gets pass-otp's error.
+  await browser.storage.local.set({ otpPattern: "" });
+  reply = await send("otpEntries", {}, site);
+  assert.equal(JSON.stringify(reply.result.map(e => e.path)), JSON.stringify(["www/auto.test/ivy"]));
+  reply = await send("otp", { path: "www/auto.test/ivy" }, site);
+  assert.ok(reply.error);
+
   console.log("manager tests passed");
 } finally {
   spawnSync("gpgconf", ["--kill", "gpg-agent"], { env });

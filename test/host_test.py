@@ -199,6 +199,17 @@ def main():
         # Copying goes through pass -c (no display here, so pass's own error).
         assert "display" in ask(env, {"action": "clip", "path": "www/github.com/alice"}).get("error", "").lower()
 
+        # One-time codes come from pass otp, in the folder they're asked for.
+        insert("otp/codes.test", "otpauth://totp/codes.test:kai?secret=JBSWY3DPEHPK3PXP&issuer=codes.test\n")
+        totp = lambda: subprocess.run(["oathtool", "--totp", "-b", "JBSWY3DPEHPK3PXP"], capture_output=True, text=True).stdout.strip()
+        before = totp()
+        code = ask(env, {"action": "otp", "path": "otp/codes.test"}, dir="otp", layout="{url}")
+        assert code.get("code") in (before, totp()), code  # either side of a 30s step
+        assert [e["domain"] for e in ask(env, {"action": "list"}, dir="otp", layout="{url}")["entries"]] == ["codes.test", "github.com"]
+        assert "outside" in ask(env, {"action": "otp", "path": "otp/codes.test"}).get("error", "")
+        # A login without an otpauth:// line: pass-otp's own error.
+        assert "error" in ask(env, {"action": "otp", "path": "www/github.com/alice"})
+
         subprocess.run(["gpgconf", "--kill", "gpg-agent"], env=env, capture_output=True)
     print("host tests passed")
 

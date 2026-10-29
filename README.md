@@ -29,6 +29,7 @@ only connects it to Firefox.
 - Python 3
 - To copy passwords: `wl-copy` (Wayland) or `xclip` (X11), the same tools
   pass uses for `pass show -c`
+- For two-step verification codes: [pass-otp](https://github.com/tadfisher/pass-otp)
 
 ## Install
 
@@ -105,6 +106,19 @@ The new password is saved right away, as Firefox does, without a username at
 first. After you submit the form, passfox asks
 **Add username to saved password?** so the entry gets the right name.
 
+### Fill a two-step verification code
+
+When a site asks for a one-time code, such as GitHub's *Authentication
+code*, the code field's dropdown lists the codes you have for that site.
+Choose one and passfox fills the code from `pass otp`, including into sites
+that use one box per digit. Code fields that are already focused when the
+page loads open the dropdown right away.
+
+passfox finds codes where **Where one-time codes are stored** in the
+[preferences](#settings) says: in each login's own entry, on its
+`otpauth://` line (the default, as `pass otp append` adds it), or in their own
+folder, like `otp/github.com` with `otp/{url}`.
+
 ### The toolbar button
 
 Click the passfox button to see the logins for the site you're on: click a
@@ -177,7 +191,8 @@ When passfox updates an entry, only the password line changes; every other
 line is kept.
 
 **With a folder (like `www`, or `www/{url}/{username}`), everything outside
-it is left alone.** Tokens, TOTP seeds, keys and notes elsewhere in
+it is left alone**, apart from the one-time codes folder if you set one
+(where passfox only runs `pass otp`). Tokens, keys and notes elsewhere in
 your store are never shown, decrypted, copied or changed by passfox. Without
 one, the whole store is passfox's to read, so entries that don't fit the
 pattern show up on the passwords page too (they're never offered on a site).
@@ -194,7 +209,10 @@ password settings:
 - **Manage saved passwords**, which opens the passwords page,
 - **Where logins are stored**: a folder such as `www` (any layout inside it),
   or an exact pattern such as `www/{url}/{username}` (see
-  [Your store](#your-store)).
+  [Your store](#your-store)),
+- **Where one-time codes are stored**: empty for the `otpauth://` line in each
+  login's entry, or a folder or pattern such as `otp/{url}` for codes kept
+  apart (see [Fill a two-step verification code](#fill-a-two-step-verification-code)).
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and

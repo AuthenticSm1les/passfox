@@ -281,6 +281,16 @@ def cmd_clip(msg):
     return {"ok": True}
 
 
+def cmd_otp(msg):
+    """A one-time code from pass-otp (pass otp code), from the entry's
+    otpauth:// line; with "clip", pass-otp copies it instead."""
+    path = check_path(msg.get("path"))
+    if msg.get("clip"):
+        run_pass(["otp", "code", "--clip", path])
+        return {"ok": True}
+    return {"code": run_pass(["otp", "code", path]).strip()}
+
+
 def cmd_adopt(msg):
     """Give a generated entry its username: rename it, or, when that login
     already exists, move the new password into it (keeping its other lines)
@@ -359,6 +369,7 @@ COMMANDS = {
     "insert": cmd_insert,
     "generate": cmd_generate,
     "clip": cmd_clip,
+    "otp": cmd_otp,
     "adopt": cmd_adopt,
     "edit": cmd_edit,
     "remove": cmd_remove,
