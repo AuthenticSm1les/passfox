@@ -19,5 +19,7 @@ jobs:
           node-version: 22
       - name: Passwords page handlers (end to end)
         run: node test/manager_test.mjs
+      - name: Trimmed design tokens are up to date
+        run: python3 -I tools/trim-tokens.py --check
       - name: Lint extension
         run: python3 -I tools/lint.py

@@ -25,6 +25,7 @@ for f in tokens-shared tokens-platform; do
     "$g/design-system/$f.css" > "$out/$f.css"
 done
 python3 -I "$here/tools/unwrap-nova.py" "$out/tokens-shared.css" "$out/tokens-platform.css"
+python3 -I "$here/tools/trim-tokens.py"
 cp "$tmp/browser/chrome/browser/skin/classic/browser/login.svg" "$out/icons/"
 for i in edit arrow-down-12 defaultFavicon search-textbox edit-copy eye eye-slash; do
   cp "$g/icons/$i.svg" "$out/icons/"

@@ -55,7 +55,16 @@
   });
 
   // After a form post the page reloads; re-show a pending in-page prompt.
-  call("pending")
+  // Only ask the background when one is waiting for this site.
+  browser.storage.local
+    .get("inPageSaves")
+    .then(({ inPageSaves = {} }) => {
+      const host = location.hostname;
+      const waiting = Object.values(inPageSaves).some(
+        ({ domain, until }) => until > Date.now() && (host == domain || host.endsWith(`.${domain}`))
+      );
+      return waiting ? call("pending") : null;
+    })
     .then(pending => pending?.inPage && show(pending))
     .catch(() => {});
 })();

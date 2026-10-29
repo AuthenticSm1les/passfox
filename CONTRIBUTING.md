@@ -58,7 +58,10 @@ doorhanger also as the toolbar panel. The styles come from Firefox's source:
   (`tokens-shared.css`, `tokens-platform.css`) and icons, pulled from the
   installed Firefox's `omni.ja` by `tools/vendor-firefox.sh`. `rem` units are
   rewritten to `--passfox-rem` (the browser UI font size), because a page's
-  own root font size would otherwise rescale them.
+  own root font size would otherwise rescale them. Pages and the toolbar
+  panel get `tokens-ui.css`, cut down by `tools/trim-tokens.py` to the tokens
+  passfox uses; run it again after changing `firefox.css` or `popup.css` (CI
+  checks it's up to date).
 - Firefox 158 ships with its Nova design on (`browser.nova.enabled`), whose
   values sit in `@media -moz-pref(...)` blocks that web content can't
   evaluate; `tools/unwrap-nova.py` applies them unconditionally, and the

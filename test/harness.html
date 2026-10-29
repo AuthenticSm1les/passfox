@@ -33,13 +33,17 @@
       ];
       window.harnessLog = [];
       window.browser = {
+        storage: {
+          local: { get: async defaults => ({ ...(defaults && typeof defaults == "object" ? defaults : {}) }), set: async () => {} },
+          onChanged: { addListener() {} },
+        },
         runtime: {
           onMessage: { addListener: fn => listeners.push(fn) },
           async sendMessage(msg) {
             harnessLog.push(msg.type);
             switch (msg.type) {
               case "css": {
-                const files = ["tokens-shared.css", "tokens-platform.css"].map(f => `../extension/vendor/firefox/${f}`);
+                const files = ["tokens-ui.css"].map(f => `../extension/vendor/firefox/${f}`);
                 files.push("../extension/shared/firefox.css");
                 const texts = await Promise.all(files.map(f => fetch(f, { cache: "no-store" }).then(r => r.text())));
                 return { result: texts.join("\n") };

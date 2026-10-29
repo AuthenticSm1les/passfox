@@ -4,15 +4,12 @@
 import json
 import os
 import re
-import shutil
 import struct
-import subprocess
 import sys
 
 STORE = os.path.realpath(
     os.path.expanduser(os.environ.get("PASSWORD_STORE_DIR", "~/.password-store"))
 )
-PASS = shutil.which("pass") or "/usr/bin/pass"
 HOSTNAME_RE = re.compile(r"^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z0-9-]+(:\d+)?$|^localhost(:\d+)?$", re.I)
 USERNAME_KEYS = ("login", "username", "user", "email")
 URL_KEYS = ("url", "website", "site")
@@ -169,8 +166,13 @@ def list_dir(top):
 
 
 def run_pass(args, stdin=None):
+    # Imported here: listing, the most common request, never runs pass, and
+    # these two modules are a fifth of the host's start-up time.
+    import shutil
+    import subprocess
+
     proc = subprocess.run(
-        [PASS, *args],
+        [shutil.which("pass") or "/usr/bin/pass", *args],
         input=stdin,
         capture_output=True,
         text=True,

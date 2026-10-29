@@ -27,7 +27,9 @@ run("pass", ["insert", "-m", "www/github.com/alice"], "pw-alice\nnote: keep\n");
 run("pass", ["insert", "-m", "misc/token"], "secret\n");
 
 // The native host, as Firefox would run it for sendNativeMessage.
+let nativeCalls = 0;
 function sendNativeMessage(_name, message) {
+  nativeCalls++;
   const data = Buffer.from(JSON.stringify(message));
   const header = Buffer.alloc(4);
   header.writeUInt32LE(data.length);
@@ -44,6 +46,7 @@ const lifecycle = [];
 // passfox's preferences: these tests start with the older pair of settings
 // (folder www, default name), which must carry over as www/{url}/{username}.
 let settings = { loginDir: "www" };
+let session = {};
 const storageListeners = [];
 const menus = new Map();
 let passwordSaving = { value: true, levelOfControl: "controllable_by_this_extension" };
@@ -68,7 +71,11 @@ const browser = {
     },
   },
   storage: {
-    session: { get: async () => ({}), set: async () => {}, remove: async () => {} },
+    session: {
+      get: async key => (key == null ? { ...session } : Object.fromEntries([key].flat().filter(k => k in session).map(k => [k, session[k]]))),
+      set: async items => void Object.assign(session, structuredClone(items)),
+      remove: async keys => [keys].flat().forEach(k => delete session[k]),
+    },
     local: {
       get: async keys => ({ ...(keys && !Array.isArray(keys) && typeof keys == "object" ? keys : {}), ...settings }),
       set: async items => {
@@ -79,7 +86,7 @@ const browser = {
     },
     onChanged: { addListener: fn => storageListeners.push(fn) },
   },
-  tabs: { onRemoved: { addListener() {} }, sendMessage: async () => {} },
+  tabs: { sendMessage: async () => {} },
   menus: {
     removeAll: async () => menus.clear(),
     create: item => menus.set(item.id, { ...item }),
@@ -88,16 +95,21 @@ const browser = {
   },
   action: {},
 };
-vm.runInNewContext(readFileSync(join(root, "extension/background.js"), "utf8"), {
-  browser,
-  URL,
-  console,
-  Promise,
-  Date,
-  Error,
-  fetch: () => Promise.reject(new Error("no fetch in tests")),
-  navigator: { clipboard: { writeText: async () => {} } },
-});
+// Loads the background as Firefox does when it starts or wakes from sleep.
+function startBackground() {
+  vm.runInNewContext(readFileSync(join(root, "extension/background.js"), "utf8"), {
+    browser,
+    URL,
+    console: { ...console, info() {} },
+    Promise,
+    Date,
+    Error,
+    structuredClone,
+    fetch: () => Promise.reject(new Error("no fetch in tests")),
+    navigator: { clipboard: { writeText: async () => {} } },
+  });
+}
+startBackground();
 
 const page = { id: "passfox@test", url: ORIGIN + "logins/logins.html" };
 const send = async (type, data = {}, sender = page) => listener({ type, ...data }, sender);
@@ -206,6 +218,38 @@ try {
   );
   reply = await send("manager-create", { origin: "https://auto.test", username: "ivy", password: "pw" });
   assert.equal(reply.result.path, "www/auto.test/ivy");
+
+  // The login list survives the background sleeping: a fresh start reads it
+  // from session storage without starting the host.
+  const tab = { id: 7, windowId: 1, url: "https://auto.test/login" };
+  const site = { id: "passfox@test", url: tab.url, tab };
+  await send("logins", {}, site);
+  startBackground();
+  nativeCalls = 0;
+  reply = await send("logins", {}, site);
+  assert.equal(JSON.stringify(reply.result.map(l => l.username)), JSON.stringify(["ivy"]));
+  assert.equal(nativeCalls, 0);
+
+  // Without a toolbar panel, the save prompt falls back to the page and
+  // flags the site (no password) for pages to check without waking the
+  // background; answering the prompt clears the flag.
+  await send("submitted", { username: "new", password: "pw-new", possibleUsernames: [] }, site);
+  assert.equal(session["pending-7"].password, "pw-new");
+  assert.equal(JSON.stringify(Object.keys(settings.inPageSaves)), JSON.stringify(["7"]));
+  assert.equal(settings.inPageSaves[7].domain, "auto.test");
+  assert.ok(!JSON.stringify(settings.inPageSaves).includes("pw-new"));
+  await send("pendingDone", { action: "dismiss" }, site);
+  assert.equal(JSON.stringify(settings.inPageSaves), "{}");
+  assert.ok(!("pending-7" in session));
+
+  // Prompts left unanswered are dropped the next time the background starts.
+  await send("submitted", { username: "new", password: "pw-new", possibleUsernames: [] }, site);
+  session["pending-7"].at -= 120_000;
+  settings.inPageSaves[7].until -= 120_000;
+  startBackground();
+  await new Promise(r => setTimeout(r, 10));
+  assert.ok(!("pending-7" in session));
+  assert.equal(JSON.stringify(settings.inPageSaves), "{}");
 
   console.log("manager tests passed");
 } finally {

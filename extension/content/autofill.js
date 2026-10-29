@@ -199,7 +199,8 @@
 
   /* ::::: popup ::::: */
 
-  const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+  // Made on first use: this script runs in every frame, few of which show a login.
+  let dateFormatter = null;
 
   /** Like LoginAutocompleteItem: empty or repeated usernames get a date. */
   function loginLabel(login, all) {
@@ -207,6 +208,7 @@
       login.username && all.filter(l => l.username === login.username).length > 1;
     const name = login.username || "No username";
     if ((!login.username || duplicate) && login.modified) {
+      dateFormatter ??= new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
       return `${name} (${dateFormatter.format(new Date(login.modified))})`;
     }
     return name;

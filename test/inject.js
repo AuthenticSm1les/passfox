@@ -30,7 +30,7 @@
       async sendMessage(msg) {
         switch (msg.type) {
           case "css": {
-            const files = ["vendor/firefox/tokens-shared.css", "vendor/firefox/tokens-platform.css", "shared/firefox.css"];
+            const files = ["vendor/firefox/tokens-ui.css", "shared/firefox.css"];
             const texts = await Promise.all(files.map(f => fetch(`/extension/${f}`, { cache: "no-store" }).then(r => r.text())));
             return { result: texts.join("\n") };
           }

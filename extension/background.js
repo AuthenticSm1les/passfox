@@ -74,10 +74,27 @@ async function native(message) {
   return response;
 }
 
+// The list (paths and usernames, no passwords) is also kept in session
+// storage, so it outlives the background going to sleep between pages
+// instead of starting the host again for the first dropdown after it wakes.
+// It's tagged with the folder and layout it was listed with.
+const LIST_KEY = "listCache";
+
+function forgetList() {
+  listCache = null;
+  browser.storage.session.remove(LIST_KEY).catch(() => {});
+}
+
 async function allEntries({ force = false } = {}) {
-  if (force || !listCache || Date.now() - listCache.at > LIST_TTL_MS) {
+  const pattern = `${loginDir}\n${loginLayout}`;
+  const fresh = cache => cache?.pattern === pattern && Date.now() - cache.at <= LIST_TTL_MS;
+  if (!force && !fresh(listCache)) {
+    listCache = (await browser.storage.session.get(LIST_KEY))[LIST_KEY] ?? null;
+  }
+  if (force || !fresh(listCache)) {
     const { entries } = await native({ action: "list" });
-    listCache = { at: Date.now(), entries };
+    listCache = { at: Date.now(), pattern, entries };
+    browser.storage.session.set({ [LIST_KEY]: listCache }).catch(() => {});
   }
   return listCache.entries;
 }
@@ -210,11 +227,43 @@ async function getPending(tabId) {
   return null;
 }
 
-function clearPending(tabId) {
-  return browser.storage.session.remove(pendingKey(tabId));
+// Pages check this list in storage instead of asking the background on
+// every load, so navigating doesn't wake it. It holds no passwords: just the
+// base domain and expiry of each tab's in-page prompt.
+const IN_PAGE_KEY = "inPageSaves";
+
+async function setInPageFlag(tabId, pending) {
+  const { [IN_PAGE_KEY]: flags = {} } = await browser.storage.local.get(IN_PAGE_KEY);
+  flags[tabId] = { domain: baseDomain(pending.host), until: pending.at + PENDING_TTL_MS };
+  await browser.storage.local.set({ [IN_PAGE_KEY]: flags });
 }
 
-browser.tabs.onRemoved.addListener(clearPending);
+async function clearInPageFlags(isDone) {
+  const { [IN_PAGE_KEY]: flags } = await browser.storage.local.get(IN_PAGE_KEY);
+  const done = Object.entries(flags ?? {}).filter(isDone);
+  if (done.length) {
+    done.forEach(([tabId]) => delete flags[tabId]);
+    await browser.storage.local.set({ [IN_PAGE_KEY]: flags });
+  }
+}
+
+async function clearPending(tabId) {
+  await browser.storage.session.remove(pendingKey(tabId));
+  await clearInPageFlags(([id]) => id == tabId);
+}
+
+// Prompts nobody answered (their tab may be closed) are dropped whenever the
+// background starts, instead of listening for every tab closing.
+async function dropExpiredPending() {
+  const all = await browser.storage.session.get();
+  const expired = Object.keys(all).filter(
+    key => key.startsWith("pending-") && !(Date.now() - all[key]?.at < PENDING_TTL_MS)
+  );
+  await browser.storage.session.remove(expired);
+  await clearInPageFlags(([, flag]) => !(flag.until > Date.now()));
+}
+
+dropExpiredPending().catch(() => {});
 
 const GENERATED_PREFIX = "passfox-generated-";
 
@@ -318,6 +367,7 @@ async function presentPending(tab, pending) {
     console.info("passfox: toolbar panel unavailable, showing in page:", error.message);
     pending.inPage = true;
     await browser.storage.session.set({ [key]: pending });
+    await setInPageFlag(tab.id, pending);
     browser.tabs.sendMessage(tab.id, { type: "show-save", pending }, { frameId: 0 }).catch(() => {});
   }
 }
@@ -335,12 +385,12 @@ async function onPendingDone(sender, { action, username, password, tabId: pageTa
   } else if (pending.from && (action == "update" || action == "add-username" || action == "save")) {
     const path = username === pending.username ? pending.path : savePathFor(pending.host, username);
     await native({ action: "adopt", from: pending.from, to: path, username, url: pending.url });
-    listCache = null;
+    forgetList();
   } else if (action == "save" || action == "update") {
     const path =
       action == "update" && pending.path ? pending.path : savePathFor(pending.host, username);
     await native({ action: "insert", path, username, password, url: pending.url });
-    listCache = null;
+    forgetList();
   }
   return { ok: true };
 }
@@ -350,8 +400,7 @@ async function onPendingDone(sender, { action, username, password, tabId: pageTa
 async function loadCss() {
   if (!cssCache) {
     const files = [
-      "vendor/firefox/tokens-shared.css",
-      "vendor/firefox/tokens-platform.css",
+      "vendor/firefox/tokens-ui.css",
       "shared/firefox.css",
     ];
     const texts = await Promise.all(
@@ -417,7 +466,7 @@ const handlers = {
       path: generatedPathFor(host),
       url: originOf(sender.url),
     });
-    listCache = null;
+    forgetList();
     return { path: result.entry.path, username: "", password: result.password };
   },
 
@@ -476,7 +525,7 @@ const handlers = {
     if (msg.extra?.length) {
       await native({ action: "edit", path, username: msg.username, password: msg.password, url, extra: msg.extra });
     }
-    listCache = null;
+    forgetList();
     return { path, domain: host, username: msg.username, modified: Date.now() };
   },
 
@@ -506,14 +555,14 @@ const handlers = {
       url,
       extra: Array.isArray(msg.extra) ? msg.extra : undefined,
     });
-    listCache = null;
+    forgetList();
     return { path, domain: host, username: msg.username, modified: Date.now() };
   },
 
   async "manager-remove"(msg, sender) {
     requireExtensionPage(sender);
     await native({ action: "remove", path: msg.path });
-    listCache = null;
+    forgetList();
     return { ok: true };
   },
 };

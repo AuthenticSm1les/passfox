@@ -66,12 +66,16 @@
         { path: "www/accounts.example.com/alex", domain: "accounts.example.com", username: "alex", exact: false, modified: 1770000000000 },
       ];
       window.browser = {
+        storage: {
+          local: { get: async defaults => ({ ...(defaults && typeof defaults == "object" ? defaults : {}) }), set: async () => {} },
+          onChanged: { addListener() {} },
+        },
         runtime: {
           onMessage: { addListener: fn => listeners.push(fn) },
           async sendMessage(msg) {
             switch (msg.type) {
               case "css": {
-                const files = ["vendor/firefox/tokens-shared.css", "vendor/firefox/tokens-platform.css", "shared/firefox.css"];
+                const files = ["vendor/firefox/tokens-ui.css", "shared/firefox.css"];
                 const texts = await Promise.all(files.map(f => fetch(`/extension/${f}`, { cache: "no-store" }).then(r => r.text())));
                 return { result: texts.join("\n") };
               }
