@@ -114,10 +114,11 @@ Choose one and passfox fills the code from `pass otp`, including into sites
 that use one box per digit. Code fields that are already focused when the
 page loads open the dropdown right away.
 
-passfox finds codes where **Where one-time codes are stored** in the
-[preferences](#settings) says: in each login's own entry, on its
-`otpauth://` line (the default, as `pass otp append` adds it), or in their own
-folder, like `otp/github.com` with `otp/{url}`.
+By default passfox reads codes from each login's own entry, on its
+`otpauth://` line (as `pass otp append` adds it). For codes kept in their own
+folder, turn on **Store one-time codes in a different place** in the
+[preferences](#settings) and give a pattern, like `otp/{url}` for
+`otp/github.com` or `otp/{domain}` for `otp/github`.
 
 ### The toolbar button
 
@@ -169,7 +170,12 @@ website. The **Where logins are stored** [preference](#settings) says where:
   www/{url}/{username}    www/example.com/alex@email.com
   {username}@{url}        alex@email.com@example.com
   www/{url}               www/example.com   (one login per website)
+  www/{domain}/{username} www/example/alex@email.com
   ```
+
+  `{domain}` is the website without its ending (`archlinux` for
+  `aur.archlinux.org`), and matches every address of that name, whatever
+  the ending: `example` is offered on `example.com` and `example.org` alike.
 
 New logins are saved with the pattern (or as `<website>/<username>` inside a
 folder). With `{url}/{username}`, an entry named just after the website also
@@ -210,9 +216,12 @@ password settings:
 - **Where logins are stored**: a folder such as `www` (any layout inside it),
   or an exact pattern such as `www/{url}/{username}` (see
   [Your store](#your-store)),
-- **Where one-time codes are stored**: empty for the `otpauth://` line in each
-  login's entry, or a folder or pattern such as `otp/{url}` for codes kept
-  apart (see [Fill a two-step verification code](#fill-a-two-step-verification-code)).
+- **Ignore website endings in suggestions (unsafe)**: off by default. On,
+  a website's logins and codes are offered on every ending of its name
+  (`github.com`'s on `github.org`), so a look-alike site gets them too,
+- **Store one-time codes in a different place**: off, codes come from the
+  `otpauth://` line in each login's entry; on, from the folder or pattern in
+  **Where one-time codes are stored**, such as `otp/{url}` or `otp/{domain}` (see [Fill a two-step verification code](#fill-a-two-step-verification-code)).
 
 passfox also follows your pass configuration, such as `PASSWORD_STORE_DIR`,
 `PASSWORD_STORE_GENERATED_LENGTH`, `PASSWORD_STORE_CHARACTER_SET` and

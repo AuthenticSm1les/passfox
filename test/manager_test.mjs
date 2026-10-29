@@ -251,6 +251,17 @@ try {
   assert.ok(!("pending-7" in session));
   assert.equal(JSON.stringify(settings.inPageSaves), "{}");
 
+  // Other endings of the site's name only with "Ignore website endings".
+  const lookalike = { ...site, url: "https://auto.example/" };
+  reply = await send("logins", {}, lookalike);
+  assert.equal(reply.result.length, 0);
+  await browser.storage.local.set({ ignoreTld: true });
+  reply = await send("logins", {}, lookalike);
+  assert.equal(JSON.stringify(reply.result.map(l => [l.username, l.exact])), JSON.stringify([["ivy", false]]));
+  await browser.storage.local.set({ ignoreTld: false });
+  reply = await send("fill", { path: "www/auto.test/ivy" }, lookalike);
+  assert.match(reply.error, /belong/);
+
   // One-time codes: from their own folder when "Where one-time codes are
   // stored" is set, and only for the site asking.
   run("pass", ["insert", "-m", "otp/auto.test"], "otpauth://totp/auto.test:ivy?secret=JBSWY3DPEHPK3PXP\n");
@@ -263,7 +274,25 @@ try {
   assert.match(reply.error, /belong/);
   // Kept in the logins themselves: the site's logins are offered, and a
   // login without an otpauth:// line gets pass-otp's error.
-  await browser.storage.local.set({ otpPattern: "" });
+  // {domain}: named after the website without its ending, for every
+  // address of it.
+  run("pass", ["insert", "-m", "otp/auto"], "otpauth://totp/auto:ivy?secret=JBSWY3DPEHPK3PXP\n");
+  await browser.storage.local.set({ otpPattern: "otp/{domain}" });
+  await new Promise(r => setTimeout(r, 10));
+  reply = await send("otpEntries", {}, { ...site, url: "https://login.auto.test/" });
+  assert.equal(JSON.stringify(reply.result.map(e => [e.path, e.domain])), JSON.stringify([["otp/auto", "auto.test"]]));
+  reply = await send("otp", { path: "otp/auto" }, { ...site, url: "https://login.auto.test/" });
+  assert.match(reply.result.code, /^\d{6}$/);
+  reply = await send("otp", { path: "otp/auto" }, { ...site, url: "https://other.test/" });
+  assert.match(reply.error, /belong/);
+  // Switched off, codes come from the logins and the pattern is kept.
+  await browser.storage.local.set({ otpSeparate: false });
+  await new Promise(r => setTimeout(r, 10));
+  reply = await send("otpEntries", {}, site);
+  assert.equal(JSON.stringify(reply.result.map(e => e.path)), JSON.stringify(["www/auto.test/ivy"]));
+  assert.equal(settings.otpPattern, "otp/{domain}");
+  await browser.storage.local.set({ otpPattern: "", otpSeparate: true });
+  await new Promise(r => setTimeout(r, 10));
   reply = await send("otpEntries", {}, site);
   assert.equal(JSON.stringify(reply.result.map(e => e.path)), JSON.stringify(["www/auto.test/ivy"]));
   reply = await send("otp", { path: "www/auto.test/ivy" }, site);

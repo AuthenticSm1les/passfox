@@ -16,7 +16,9 @@ let listCache = null;
 let cssCache = null;
 
 // Where logins are stored, from passfox's preferences: one pattern from the
-// store root with {url} (or {site}) and {username}, e.g. www/{url}/{username}.
+// store root with {url} (or {site}) and {username}, e.g. www/{url}/{username};
+// {domain} in place of {url} names entries after the website without its
+// ending (archlinux for aur.archlinux.org).
 // Its plain folders before the first placeholder are the login folder: every
 // native request carries it, and the host lists, reads and writes nothing
 // outside it. The rest is how each login is named. A plain folder (no
@@ -47,6 +49,12 @@ function applyPattern(pattern) {
 // own entry (an otpauth:// line, as pass-otp keeps them), otherwise a pattern
 // read like the logins one, such as otp/{url}. Codes always come from pass otp.
 let otpPattern = "";
+
+// The pattern is kept while "a different place" is switched off; earlier
+// builds had no switch, so a saved pattern means it's on.
+function otpPatternFrom({ otpPattern: pattern = "", otpSeparate = !!pattern }) {
+  return otpSeparate ? pattern : "";
+}
 let otpCache = null;
 
 /** How a new login is named inside the folder. */
@@ -62,19 +70,30 @@ function patternFrom({ loginPattern, loginDir: dir, loginLayout: layout }) {
   return dir || layout ? [dir, layout || DEFAULT_PATTERN].filter(Boolean).join("/") : DEFAULT_PATTERN;
 }
 
+// "Ignore website endings in suggestions": offer github.com's logins on
+// github.org too. Off by default, as anyone can register a name under
+// another ending.
+let ignoreTld = false;
+
 const settingsReady = browser.storage.local
-  .get(["loginPattern", "loginDir", "loginLayout", "otpPattern"])
+  .get(["loginPattern", "loginDir", "loginLayout", "otpPattern", "otpSeparate", "ignoreTld"])
   .then(settings => {
     applyPattern(patternFrom(settings));
-    otpPattern = settings.otpPattern ?? "";
+    otpPattern = otpPatternFrom(settings);
+    ignoreTld = !!settings.ignoreTld;
   });
 browser.storage.onChanged.addListener((changes, area) => {
   if (area == "local" && changes.loginPattern) {
     applyPattern(changes.loginPattern.newValue);
   }
-  if (area == "local" && changes.otpPattern) {
-    otpPattern = changes.otpPattern.newValue ?? "";
-    otpCache = null;
+  if (area == "local" && (changes.otpPattern || changes.otpSeparate)) {
+    browser.storage.local.get(["otpPattern", "otpSeparate"]).then(settings => {
+      otpPattern = otpPatternFrom(settings);
+      otpCache = null;
+    });
+  }
+  if (area == "local" && changes.ignoreTld) {
+    ignoreTld = !!changes.ignoreTld.newValue;
   }
 });
 
@@ -132,6 +151,11 @@ function baseDomain(host) {
   return labels.slice(-take).join(".");
 }
 
+/** A website's name without its ending, for {domain}: archlinux for aur.archlinux.org. */
+function siteName(host) {
+  return baseDomain(stripPort(host)).split(".")[0];
+}
+
 /** What Firefox stores as a login's site: scheme://host[:port]. */
 function originOf(url) {
   return new URL(url).origin;
@@ -171,14 +195,21 @@ async function loginsForUrl(url, source = allEntries) {
     return [];
   }
   const base = baseDomain(host);
+  const name = siteName(host);
   const matches = [];
   for (const entry of await source()) {
+    if (entry.name) {
+      if (entry.name === name) {
+        matches.push({ ...entry, domain: base, exact: false });
+      }
+      continue;
+    }
     if (!entry.domain) {
       continue;
     }
     const domain = stripPort(entry.domain);
     const exact = domain === host || domain === `www.${host}` || `www.${domain}` === host;
-    if (exact || baseDomain(domain) === base) {
+    if (exact || baseDomain(domain) === base || (ignoreTld && siteName(domain) === name)) {
       matches.push({ ...entry, exact });
     }
   }
@@ -316,7 +347,9 @@ function isGeneratedPath(path) {
 /** The entry for a login, named by the pattern from passfox's preferences. */
 function savePathFor(host, username) {
   const name = (username || "login").replace(/[/\\]/g, "_").replace(/^[.-]+/, "_");
-  return inLoginDir(namingLayout().replace(/\{(url|site)\}/, host).replace("{username}", name));
+  return inLoginDir(
+    namingLayout().replace(/\{(url|site)\}/, host).replace("{domain}", siteName(host)).replace("{username}", name)
+  );
 }
 
 function generatedPathFor(host) {

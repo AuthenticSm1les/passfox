@@ -125,7 +125,14 @@ def main():
         # {url} is the same placeholder as {site}.
         url_named = ask(env, {"action": "list"}, dir="names", layout="{username}@{url}")["entries"]
         assert ("example.org", "bob") in [(e["domain"], e["username"]) for e in url_named], url_named
-        for bad in ("{username}", "{site}/{site}", "{url}/{site}", "{site}/{user}", "../{site}", "{site}/{username}/{username}"):
+        # {domain}: the website without its ending, matched by the extension.
+        insert("bare/archlinux/zoe", "pw\n")
+        insert("bare/not.a.name/x", "pw\n")
+        bare = {e["path"]: e for e in ask(env, {"action": "list"}, dir="bare", layout="{domain}/{username}")["entries"]}
+        zoe = bare["bare/archlinux/zoe"]
+        assert (zoe["domain"], zoe["username"], zoe["name"]) == (None, "zoe", "archlinux"), bare
+        assert "name" not in bare["bare/not.a.name/x"] and bare["bare/not.a.name/x"]["domain"] is None, bare
+        for bad in ("{username}", "{site}/{site}", "{url}/{site}", "{url}/{domain}", "{domain}/{domain}", "{site}/{user}", "../{site}", "{site}/{username}/{username}"):
             assert "error" in ask(env, {"action": "list"}, layout=bad), bad
 
         got = ask(env, {"action": "get", "path": "www/github.com/alice"})

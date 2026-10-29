@@ -11,6 +11,8 @@ STORE = os.path.realpath(
     os.path.expanduser(os.environ.get("PASSWORD_STORE_DIR", "~/.password-store"))
 )
 HOSTNAME_RE = re.compile(r"^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z0-9-]+(:\d+)?$|^localhost(:\d+)?$", re.I)
+# A website's name without its ending ("github" for github.com), for {domain}.
+SITE_NAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.I)
 USERNAME_KEYS = ("login", "username", "user", "email")
 URL_KEYS = ("url", "website", "site")
 # The folder holding website logins as <domain>/<username>, chosen in
@@ -33,7 +35,8 @@ AUTO = "auto"
 
 def compile_layout(layout):
     """Turn a name pattern like "{url}/{username}" into a matcher with
-    "site" and (optionally) "username" groups ({site} is the same as {url}).
+    "site" or "name" and (optionally) "username" groups ({site} is the same
+    as {url}; {domain} is the website without its ending, as "name").
     "auto" means any layout (see match_auto)."""
     if layout == AUTO:
         return AUTO
@@ -41,19 +44,20 @@ def compile_layout(layout):
     pieces = re.split(r"(\{[a-z]+\})", layout)
     placeholders = [p for p in pieces if p.startswith("{")]
     if (
-        placeholders.count("{site}") != 1
+        placeholders.count("{site}") + placeholders.count("{domain}") != 1
         or placeholders.count("{username}") > 1
-        or set(placeholders) - {"{site}", "{username}"}
+        or set(placeholders) - {"{site}", "{domain}", "{username}"}
         or any(part in ("", ".", "..") or part.startswith("-") for part in layout.split("/"))
     ):
-        raise ValueError("invalid name pattern: use {url} once and {username} at most once")
+        raise ValueError("invalid name pattern: use {url} or {domain} once and {username} at most once")
     # A trailing "/{username}" is optional, so an entry named just after the
     # site (with a login: line inside) still counts as that site's login.
     optional_username = layout.endswith("/{username}")
     if optional_username:
         pieces = re.split(r"(\{[a-z]+\})", layout[: -len("/{username}")])
     regex = "".join(
-        "(?P<site>[^/]+)" if p == "{site}" else "(?P<username>.+)" if p == "{username}" else re.escape(p)
+        {"{site}": "(?P<site>[^/]+)", "{domain}": "(?P<name>[^/]+)", "{username}": "(?P<username>.+)"}.get(p)
+        or re.escape(p)
         for p in pieces
     )
     if optional_username:
@@ -130,20 +134,33 @@ def describe(path):
     """Map an entry path onto Firefox's site + username model."""
     rel = path[len(BASE) + 1:] if BASE else path
     layout = LAYOUT or compile_layout(None)
+    name = None
     if layout == AUTO:
         found = match_auto(rel)
     else:
         match = layout.match(rel)
-        found = match and HOSTNAME_RE.match(match["site"]) and (match["site"], match.groupdict().get("username") or "")
+        groups = match.groupdict() if match else {}
+        found = None
+        if groups.get("site") and HOSTNAME_RE.match(groups["site"]):
+            found = (groups["site"], groups.get("username") or "")
+        elif groups.get("name") and SITE_NAME_RE.match(groups["name"]):
+            # Named after the website without its ending: the extension
+            # matches it against every page of that website.
+            name = groups["name"].lower()
     if found:
         domain, username = found[0].lower(), found[1]
+    elif name:
+        domain, username = None, groups.get("username") or ""
     else:
         # Not named like a login (or the site isn't a hostname): listed on
         # the passwords page, never offered on a site.
         domain, username = None, rel.split("/")[-1]
     if is_generated(path):
         username = ""
-    return {"path": path, "domain": domain, "username": username}
+    entry = {"path": path, "domain": domain, "username": username}
+    if name:
+        entry["name"] = name
+    return entry
 
 
 def cmd_list(_msg):

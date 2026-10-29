@@ -38,10 +38,6 @@ h2 {
   color: var(--text-color-deemphasized);
 }
 
-.note {
-  margin-block-start: var(--space-xlarge);
-}
-
 .exceptions {
   margin: var(--space-small) 0 var(--space-medium) var(--space-xlarge);
   padding: var(--space-medium) var(--space-large);
@@ -81,13 +77,17 @@ h2.section {
     max-width: 20em;
     margin: 0;
   }
+
+  &:has(input:disabled) label {
+    opacity: var(--input-text-opacity-disabled);
+  }
 }
 
 .error {
   color: var(--text-color-error);
 }
 
-.examples {
-  margin-block: var(--space-xsmall) 0;
-  padding-inline-start: var(--space-xlarge);
+/* Firefox's "Learn more" links, next to the setting they explain. */
+.learn-more {
+  margin-inline-end: auto;
 }

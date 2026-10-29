@@ -12,7 +12,7 @@
     <h2>Passwords</h2>
 
     <div class="setting">
-      <label><input type="checkbox" id="ask-to-save" /> Ask to save passwords</label>
+      <label title="Firefox’s own “Ask to save passwords” is turned off while passfox is installed, so you’re only asked once. Passwords are saved to pass, with pass’s settings."><input type="checkbox" id="ask-to-save" /> Ask to save passwords</label>
       <div class="buttons">
         <button id="show-exceptions" aria-expanded="false" aria-controls="exceptions">Exceptions…</button>
         <button id="manage">Manage saved passwords</button>
@@ -33,57 +33,26 @@
 
     <h2 class="section">Password store</h2>
     <div class="setting folder">
-      <label for="login-pattern">Where logins are stored</label>
-      <input type="text" id="login-pattern" placeholder="{url}/{username}" spellcheck="false" autocomplete="off" aria-describedby="login-pattern-help login-pattern-error" />
-    </div>
-    <div id="login-pattern-help" class="description">
-      <p>
-        A folder in your password store, like <code>www</code>: passfox
-        recognises logins in any layout inside it and saves new ones as
-        <code>&lt;website&gt;/&lt;username&gt;</code>:
-      </p>
-      <ul class="examples">
-        <li><code>www/github.com/alice</code>, <code>www/alice@github.com</code>, <code>www/github.com</code> (username on its <code>login:</code> line)</li>
-      </ul>
-      <p>
-        Or an exact pattern, with <code>{url}</code> for the website and
-        <code>{username}</code> for the username:
-      </p>
-      <ul class="examples">
-        <li><code>{url}/{username}</code> → <code>example.com/alex@email.com</code></li>
-        <li><code>www/{url}/{username}</code> → <code>www/example.com/alex@email.com</code></li>
-        <li><code>{username}@{url}</code> → <code>alex@email.com@example.com</code></li>
-        <li><code>www/{url}</code> → <code>www/example.com</code>, one login per website</li>
-      </ul>
-      <p>
-        Entries outside the folder (before <code>{url}</code>) are left alone.
-      </p>
+      <label for="login-pattern" title="A folder in your password store, like www, or a pattern such as www/{url}/{username}. {domain} is the website without its ending.">Where logins are stored</label>
+      <input type="text" id="login-pattern" placeholder="{url}/{username}" spellcheck="false" autocomplete="off" title="A folder in your password store, like www, or a pattern such as www/{url}/{username}. {domain} is the website without its ending." aria-describedby="login-pattern-error" />
+      <a class="learn-more" href="https://github.com/AuthenticSm1les/passfox#your-store" target="_blank" rel="noopener">Learn more</a>
     </div>
     <p id="login-pattern-error" class="error" hidden></p>
 
-    <div class="setting folder">
-      <label for="otp-pattern">Where one-time codes are stored</label>
-      <input type="text" id="otp-pattern" placeholder="In each login’s entry" spellcheck="false" autocomplete="off" aria-describedby="otp-pattern-help otp-pattern-error" />
+    <div class="setting">
+      <label title="Also offers github.com’s logins and codes on github.org. A look-alike website registered under another ending would be offered them too."><input type="checkbox" id="ignore-tld" /> Ignore website endings in suggestions (unsafe)</label>
+      <a class="learn-more" href="https://github.com/AuthenticSm1les/passfox#settings" target="_blank" rel="noopener">Learn more</a>
     </div>
-    <div id="otp-pattern-help" class="description">
-      <p>
-        passfox fills two-step verification codes from <code>pass otp</code>
-        (pass-otp). Leave this empty when each login’s entry has its own
-        <code>otpauth://</code> line, or give a folder or pattern like the
-        one above for codes kept apart:
-      </p>
-      <ul class="examples">
-        <li><code>otp/{url}</code> → <code>otp/github.com</code></li>
-        <li><code>otp/{url}/{username}</code> → <code>otp/github.com/alice</code></li>
-      </ul>
+
+    <div class="setting">
+      <label title="Off: codes come from the otpauth:// line in each login’s entry. On: from the folder or pattern below."><input type="checkbox" id="otp-separate" /> Store one-time codes in a different place</label>
+      <a class="learn-more" href="https://github.com/AuthenticSm1les/passfox#fill-a-two-step-verification-code" target="_blank" rel="noopener">Learn more</a>
+    </div>
+    <div class="setting folder nested">
+      <label for="otp-pattern" title="A folder or pattern like the one for logins, such as otp/{url} or otp/{domain}.">Where one-time codes are stored</label>
+      <input type="text" id="otp-pattern" placeholder="otp/{url}" spellcheck="false" autocomplete="off" disabled title="A folder or pattern like the one for logins, such as otp/{url} or otp/{domain}." aria-describedby="otp-pattern-error" />
     </div>
     <p id="otp-pattern-error" class="error" hidden></p>
-
-    <p class="description note">
-      Firefox’s own “Ask to save passwords” is turned off while passfox is
-      installed, so you’re only asked once. Passwords are saved to pass, with
-      pass’s settings.
-    </p>
 
     <script src="options.js"></script>
   </body>
