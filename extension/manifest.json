@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "passfox",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Fill and save Firefox logins from pass, the standard unix password manager, using Firefox's own password manager look.",
   "browser_specific_settings": {
     "gecko": {
